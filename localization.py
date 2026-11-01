@@ -21,6 +21,21 @@ LOCALIZATION: Dict[str, Dict[str, str]] = {
         "status_scanning": "SCANNING",
         "footer_hotkey_prefix": "Hotkey:",
         
+        # Compact Single-Window UI
+        "btn_monitoring_idle": "Start Monitoring ({hotkey})",
+        "btn_monitoring_active": "Monitoring Active... ({hotkey})",
+        "status_subtitle_idle": "Status: Standing by",
+        "status_subtitle_scanning": "Status: Searching for queue marker...",
+        "field_lang_label": "Interface Language / Язык интерфейса",
+        "field_token_label": "Telegram Bot Token",
+        "field_chat_id_label": "Telegram Chat ID",
+        "field_display_label": "Target Display / Монитор с игрой",
+        "field_hotkey_label": "Hotkey / Горячая клавиша",
+        "field_sound_label": "Play audio alert on host PC",
+        "btn_test_telegram": "Test Telegram",
+        "btn_save_settings": "Save Settings",
+        "quick_hint": "1. Create bot in @BotFather -> 2. Get Chat ID from @userinfobot",
+        
         # Dashboard Hero
         "hero_idle_title": "Scanner Paused",
         "hero_idle_subtitle": "Standing by for arena queue pop marker at screen (0, 0).",
@@ -132,6 +147,21 @@ LOCALIZATION: Dict[str, Dict[str, str]] = {
         "status_idle": "ОЖИДАНИЕ",
         "status_scanning": "СКАНИРОВАНИЕ",
         "footer_hotkey_prefix": "Горячая клавиша:",
+        
+        # Compact Single-Window UI
+        "btn_monitoring_idle": "Начать мониторинг ({hotkey})",
+        "btn_monitoring_active": "Идет мониторинг... ({hotkey})",
+        "status_subtitle_idle": "Статус: Ожидание запуска",
+        "status_subtitle_scanning": "Статус: Поиск маркера очереди...",
+        "field_lang_label": "Язык интерфейса / Language",
+        "field_token_label": "Telegram Bot Token",
+        "field_chat_id_label": "Telegram Chat ID",
+        "field_display_label": "Монитор с игрой / Target Display",
+        "field_hotkey_label": "Горячая клавиша / Hotkey",
+        "field_sound_label": "Звуковой сигнал на ПК",
+        "btn_test_telegram": "Проверить Telegram",
+        "btn_save_settings": "Сохранить настройки",
+        "quick_hint": "1. Создай бота в @BotFather -> 2. Узнай Chat ID в @userinfobot",
         
         # Dashboard Hero
         "hero_idle_title": "Сканер на паузе",

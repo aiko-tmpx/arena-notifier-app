@@ -5,15 +5,17 @@ Main entry point and lifecycle manager.
 from __future__ import annotations
 
 import argparse
+import ctypes
 import logging
+import os
 import sys
+import urllib.request
 
-import customtkinter as ctk
-
-from config import ConfigManager
-from gui import MainWindow
-from notifier import SoundNotifier, TelegramNotifier
-from scanner import enable_dpi_awareness
+# 1. Enable Windows DPI Awareness before creating any GUI windows
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(1)
+except Exception:
+    pass
 
 # Configure clean logging format
 logging.basicConfig(
@@ -22,6 +24,43 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 logger = logging.getLogger("AikoArenaNotifier.Main")
+
+
+def ensure_and_load_fonts() -> None:
+    """Ensures Inter TTF fonts are available locally and registered into Win32 GDI."""
+    base_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    assets_dir = os.path.join(base_dir, "assets")
+    os.makedirs(assets_dir, exist_ok=True)
+
+    fonts = {
+        "Inter-Regular.ttf": "https://raw.githubusercontent.com/rsms/inter/master/docs/font-files/Inter-Regular.ttf",
+        "Inter-Bold.ttf": "https://raw.githubusercontent.com/rsms/inter/master/docs/font-files/Inter-Bold.ttf",
+    }
+
+    for font_name, url in fonts.items():
+        dest_path = os.path.join(assets_dir, font_name)
+        if not os.path.exists(dest_path):
+            try:
+                urllib.request.urlretrieve(url, dest_path)
+            except Exception:
+                continue
+
+        if os.name == "nt" and os.path.exists(dest_path):
+            try:
+                # FR_PRIVATE (0x10) | FR_NOT_ENUM (0x20)
+                ctypes.windll.gdi32.AddFontResourceExW(dest_path, 0x10 | 0x20, 0)
+            except Exception as e:
+                logger.debug(f"Failed to register font {font_name}: {e}")
+
+
+# Pre-load Inter font into GDI
+ensure_and_load_fonts()
+
+import customtkinter as ctk
+
+from config import ConfigManager
+from gui import MainWindow
+from notifier import SoundNotifier, TelegramNotifier
 
 
 def main() -> int:
@@ -34,20 +73,16 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    # 1. Enable Windows High-DPI Awareness for 1:1 physical pixel sampling
-    dpi_ok = enable_dpi_awareness()
-    logger.info(f"Windows High-DPI Awareness initialized: {dpi_ok}")
-
-    # 2. Configure CustomTkinter Appearance
+    # Configure CustomTkinter Appearance
     ctk.set_appearance_mode("dark")
     ctk.set_default_color_theme("blue")
 
-    # 3. Instantiate Backend Subsystems
+    # Instantiate Backend Subsystems
     config_manager = ConfigManager()
     telegram_notifier = TelegramNotifier()
     sound_notifier = SoundNotifier()
 
-    # 4. Create and Launch Main Single Page Application Window
+    # Create and Launch Main Single-Window Compact Utility
     app = MainWindow(
         config_manager=config_manager,
         telegram_notifier=telegram_notifier,

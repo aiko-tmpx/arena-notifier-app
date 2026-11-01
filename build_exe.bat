@@ -13,6 +13,8 @@ if not exist "%PYTHON_EXE%" (
     --onefile ^
     --noconsole ^
     --name AikoArenaNotifier ^
+    --icon=assets/icon.ico ^
+    --add-data="assets;assets" ^
     --collect-all customtkinter ^
     --clean ^
     main.py
