@@ -1,6 +1,6 @@
 """Clean, modern Single-Window desktop utility for AikoArenaNotifier.
 Features Inter typography, strict grid layout, transparent auto-save,
-high-resolution Windows taskbar/titlebar icon, and dynamic clean localization.
+and high-resolution Windows taskbar/titlebar icon.
 """
 
 from __future__ import annotations
@@ -50,50 +50,6 @@ COLOR_STATUS_ACTIVE = "#10B981"
 COLOR_DANGER = "#EF4444"
 
 FONT_FAMILY = "Inter"
-
-# =============================================================================
-# CLEAN DYNAMIC LOCALIZATION DICTIONARY
-# =============================================================================
-I18N = {
-    "English": {
-        "lang_label": "Interface Language",
-        "token_label": "Telegram Bot Token",
-        "chat_id_label": "Telegram Chat ID",
-        "display_label": "Target Game Display",
-        "hotkey_label": "Hotkey",
-        "audio_alert": "Play audio alert on host PC",
-        "btn_start": "Start Monitoring",
-        "btn_stop": "Monitoring Active...",
-        "status_idle": "Status: Standing by",
-        "status_scanning": "Status: Scanning for queue marker...",
-        "btn_test": "Test Telegram Connection",
-        "guide_hint": "1. Create bot via @BotFather -> 2. Get Chat ID via @userinfobot",
-        "status_token_empty": "Error: Bot Token cannot be empty",
-        "status_chat_id_empty": "Error: Chat ID cannot be empty",
-        "status_testing": "Testing connection...",
-        "status_verified": "Connection verified!",
-        "status_failed": "Connection failed",
-    },
-    "Русский": {
-        "lang_label": "Язык интерфейса",
-        "token_label": "Токен Telegram-бота",
-        "chat_id_label": "Telegram Chat ID",
-        "display_label": "Монитор с игрой",
-        "hotkey_label": "Горячая клавиша",
-        "audio_alert": "Звуковой сигнал на ПК",
-        "btn_start": "Начать мониторинг",
-        "btn_stop": "Идет мониторинг...",
-        "status_idle": "Статус: Ожидание запуска",
-        "status_scanning": "Статус: Поиск маркера очереди...",
-        "btn_test": "Проверить Telegram",
-        "guide_hint": "1. Создай бота в @BotFather -> 2. Узнай Chat ID в @userinfobot",
-        "status_token_empty": "Ошибка: Токен бота не может быть пустым",
-        "status_chat_id_empty": "Ошибка: Chat ID не может быть пустым",
-        "status_testing": "Проверка подключения...",
-        "status_verified": "Подключение проверено!",
-        "status_failed": "Ошибка подключения",
-    },
-}
 
 
 def ensure_and_load_icons() -> None:
@@ -168,25 +124,66 @@ def ensure_and_load_icons() -> None:
 
 
 def set_app_icon(window: ctk.CTk, icon_filename: str = "assets/icon.ico") -> None:
-    """Sets multi-resolution icon for Windows taskbar and titlebar."""
+    """Sets multi-resolution icon for Windows taskbar and titlebar,
+    using direct Win32 WM_SETICON injection to ensure crisp display on high-DPI taskbars.
+    """
     base_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
     icon_path = os.path.join(base_dir, icon_filename)
+    png_path = os.path.join(base_dir, "assets", "icon.png")
 
+    # 1. Fallback Tk PhotoImages across multiple sizes
+    photos = []
+    if os.path.exists(png_path):
+        try:
+            base_img = Image.open(png_path).convert("RGBA")
+            for size in (256, 128, 64, 48, 32, 16):
+                photos.append(ImageTk.PhotoImage(base_img.resize((size, size), Image.Resampling.LANCZOS)))
+            window.wm_iconphoto(True, *photos)
+            window._icon_photos_ref = photos
+        except Exception as e:
+            logger.debug(f"Failed setting wm_iconphoto: {e}")
+
+    # 2. Tkinter iconbitmap
     if os.path.exists(icon_path):
         try:
             window.iconbitmap(icon_path)
-            return
         except Exception as e:
             logger.debug(f"Failed setting iconbitmap: {e}")
 
-    png_path = os.path.join(base_dir, "assets", "icon.png")
-    if os.path.exists(png_path):
+    # 3. Direct Win32 WM_SETICON injection (bypasses Tkinter's 32x32 hard limit)
+    if sys.platform == "win32" and os.path.exists(icon_path):
         try:
-            img = ImageTk.PhotoImage(Image.open(png_path).resize((64, 64), Image.Resampling.LANCZOS))
-            window.wm_iconphoto(True, img)
-            window._icon_photo_ref = img  # Keep reference to prevent GC
-        except Exception:
-            pass
+            window.update_idletasks()
+            hwnd = ctypes.windll.user32.GetParent(window.winfo_id()) or window.winfo_id()
+            abs_ico_path = os.path.abspath(icon_path)
+
+            from ctypes import wintypes
+
+            ctypes.windll.user32.LoadImageW.restype = ctypes.c_void_p
+            ctypes.windll.user32.LoadImageW.argtypes = [
+                wintypes.HINSTANCE, wintypes.LPCWSTR, wintypes.UINT,
+                ctypes.c_int, ctypes.c_int, wintypes.UINT
+            ]
+            ctypes.windll.user32.SendMessageW.restype = ctypes.c_void_p
+            ctypes.windll.user32.SendMessageW.argtypes = [
+                ctypes.c_void_p, wintypes.UINT, ctypes.c_void_p, ctypes.c_void_p
+            ]
+
+            IMAGE_ICON = 1
+            LR_LOADFROMFILE = 0x00000010
+            WM_SETICON = 0x0080
+            ICON_SMALL = 0
+            ICON_BIG = 1
+
+            h_big = ctypes.windll.user32.LoadImageW(None, abs_ico_path, IMAGE_ICON, 256, 256, LR_LOADFROMFILE)
+            h_small = ctypes.windll.user32.LoadImageW(None, abs_ico_path, IMAGE_ICON, 32, 32, LR_LOADFROMFILE)
+
+            if h_big:
+                ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, ICON_BIG, h_big)
+            if h_small:
+                ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, h_small)
+        except Exception as e:
+            logger.debug(f"Failed setting native Win32 icons: {e}")
 
 
 class CleanOptionMenu(ctk.CTkOptionMenu):
@@ -265,20 +262,14 @@ class MainWindow(ctk.CTk):
         self.sound_notifier = sound_notifier
         self.cfg = self.config_manager.load_config()
 
-        # Keyboard hotkey hook tracker & debounce timer
-        self._hotkey_hook = None
-        self._current_hotkey = self.cfg.get("hotkey", "F9")
+        # Debounce timer for auto-save
         self._save_after_id = None
 
-        # Determine active language name
-        raw_lang = self.cfg.get("language", "ru")
-        self._current_lang_name = "English" if raw_lang in ("en", "English") else "Русский"
-
-        # Window dimensions: Fixed 540x650 px
+        # Window dimensions: Fixed 540x510 px
         self.title("AikoArenaNotifier")
-        self.geometry("540x650")
-        self.minsize(540, 650)
-        self.maxsize(540, 650)
+        self.geometry("540x510")
+        self.minsize(540, 510)
+        self.maxsize(540, 510)
         self.resizable(False, False)
         self.configure(fg_color=COLOR_BG)
 
@@ -308,12 +299,6 @@ class MainWindow(ctk.CTk):
 
         # Build Strict Grid Layout
         self._setup_layout()
-
-        # Apply active localization strings
-        self._apply_localization()
-
-        # Bind initial global hotkey
-        self._register_global_hotkey(self._current_hotkey)
 
     def _init_typography(self) -> None:
         """Initializes typography scale using Inter."""
@@ -434,7 +419,7 @@ class MainWindow(ctk.CTk):
         # ROW 0: Master Action Button
         self.btn_master = ctk.CTkButton(
             self.main_frame,
-            text="",
+            text="Start Monitoring",
             font=self.font_btn_main,
             fg_color=COLOR_ACCENT,
             hover_color=COLOR_ACCENT_HOVER,
@@ -448,7 +433,7 @@ class MainWindow(ctk.CTk):
         # ROW 1: Status Subtitle
         self.lbl_status = ctk.CTkLabel(
             self.main_frame,
-            text="",
+            text="Status: Standing by",
             font=self.font_subtitle,
             text_color=COLOR_TEXT_MUTED,
             anchor="center",
@@ -459,42 +444,19 @@ class MainWindow(ctk.CTk):
         sep1 = ctk.CTkFrame(self.main_frame, height=1, fg_color=COLOR_DIVIDER)
         sep1.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(0, 10))
 
-        # ROW 3: Form - Language Label
-        self.lbl_lang = ctk.CTkLabel(
-            self.main_frame,
-            text="",
-            font=self.font_form_label,
-            text_color=COLOR_TEXT_PRIMARY,
-            anchor="w",
-        )
-        self.lbl_lang.grid(row=3, column=0, columnspan=2, sticky="w", pady=(0, 2))
-
-        # ROW 4: Form - Language OptionMenu
-        self.opt_lang = CleanOptionMenu(
-            self.main_frame,
-            values=["Русский", "English"],
-            font=self.font_input,
-            height=36,
-            corner_radius=8,
-            chevron_image=self.icon_chevron,
-            command=self.on_language_change,
-        )
-        self.opt_lang.set(self._current_lang_name)
-        self.opt_lang.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(0, 8))
-
-        # ROW 5: Form - Telegram Bot Token Label
+        # ROW 3: Form - Telegram Bot Token Label
         self.lbl_token = ctk.CTkLabel(
             self.main_frame,
-            text="",
+            text="Telegram Bot Token",
             font=self.font_form_label,
             text_color=COLOR_TEXT_PRIMARY,
             anchor="w",
         )
-        self.lbl_token.grid(row=5, column=0, columnspan=2, sticky="w", pady=(0, 2))
+        self.lbl_token.grid(row=3, column=0, columnspan=2, sticky="w", pady=(0, 2))
 
-        # ROW 6: Form - Telegram Bot Token Container (Entry + Lock Button)
+        # ROW 4: Form - Telegram Bot Token Container (Entry + Lock Button)
         self.token_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        self.token_frame.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        self.token_frame.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(0, 8))
         self.token_frame.grid_columnconfigure(0, weight=1)
         self.token_frame.grid_columnconfigure(1, weight=0)
 
@@ -529,19 +491,19 @@ class MainWindow(ctk.CTk):
         self.btn_lock_token.grid(row=0, column=1, sticky="e")
         self._update_token_lock_ui()
 
-        # ROW 7: Form - Telegram Chat ID Label
+        # ROW 5: Form - Telegram Chat ID Label
         self.lbl_chat_id = ctk.CTkLabel(
             self.main_frame,
-            text="",
+            text="Telegram Chat ID",
             font=self.font_form_label,
             text_color=COLOR_TEXT_PRIMARY,
             anchor="w",
         )
-        self.lbl_chat_id.grid(row=7, column=0, columnspan=2, sticky="w", pady=(0, 2))
+        self.lbl_chat_id.grid(row=5, column=0, columnspan=2, sticky="w", pady=(0, 2))
 
-        # ROW 8: Form - Telegram Chat ID Container (Entry + Lock Button)
+        # ROW 6: Form - Telegram Chat ID Container (Entry + Lock Button)
         self.chat_id_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        self.chat_id_frame.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        self.chat_id_frame.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(0, 8))
         self.chat_id_frame.grid_columnconfigure(0, weight=1)
         self.chat_id_frame.grid_columnconfigure(1, weight=0)
 
@@ -575,17 +537,17 @@ class MainWindow(ctk.CTk):
         self.btn_lock_chat_id.grid(row=0, column=1, sticky="e")
         self._update_chat_id_lock_ui()
 
-        # ROW 9: Form - Target Game Display Label
+        # ROW 7: Form - Target Game Display Label
         self.lbl_display = ctk.CTkLabel(
             self.main_frame,
-            text="",
+            text="Target Game Display",
             font=self.font_form_label,
             text_color=COLOR_TEXT_PRIMARY,
             anchor="w",
         )
-        self.lbl_display.grid(row=9, column=0, columnspan=2, sticky="w", pady=(0, 2))
+        self.lbl_display.grid(row=7, column=0, columnspan=2, sticky="w", pady=(0, 2))
 
-        # ROW 10: Form - Target Game Display OptionMenu (with auto-save)
+        # ROW 8: Form - Target Game Display OptionMenu (with auto-save)
         monitor_labels = [m["label"] for m in self.monitors]
         selected_mon_idx = self.cfg.get("selected_display_index", 0)
         default_mon_label = (
@@ -604,40 +566,12 @@ class MainWindow(ctk.CTk):
             command=lambda _: self.auto_save(),
         )
         self.opt_display.set(default_mon_label)
-        self.opt_display.grid(row=10, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        self.opt_display.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(0, 8))
 
-        # ROW 11: Form - Hotkey Label
-        self.lbl_hotkey = ctk.CTkLabel(
-            self.main_frame,
-            text="",
-            font=self.font_form_label,
-            text_color=COLOR_TEXT_PRIMARY,
-            anchor="w",
-        )
-        self.lbl_hotkey.grid(row=11, column=0, columnspan=2, sticky="w", pady=(0, 2))
-
-        # ROW 12: Form - Hotkey OptionMenu (with auto-save)
-        hotkey_options = ["F8", "F9", "F10", "F11", "F12"]
-        current_hk = self.cfg.get("hotkey", "F9")
-        if current_hk not in hotkey_options:
-            hotkey_options.append(current_hk)
-
-        self.opt_hotkey = CleanOptionMenu(
-            self.main_frame,
-            values=hotkey_options,
-            font=self.font_input,
-            height=36,
-            corner_radius=8,
-            chevron_image=self.icon_chevron,
-            command=lambda _: self.auto_save(),
-        )
-        self.opt_hotkey.set(current_hk)
-        self.opt_hotkey.grid(row=12, column=0, columnspan=2, sticky="ew", pady=(0, 8))
-
-        # ROW 13: Form - Host Audio Alert Checkbox (with auto-save)
+        # ROW 9: Form - Host Audio Alert Checkbox (with auto-save)
         self.chk_sound = ctk.CTkCheckBox(
             self.main_frame,
-            text="",
+            text="Play audio alert on host PC",
             font=self.font_checkbox,
             text_color=COLOR_TEXT_PRIMARY,
             fg_color=COLOR_ACCENT,
@@ -651,26 +585,26 @@ class MainWindow(ctk.CTk):
             self.chk_sound.select()
         else:
             self.chk_sound.deselect()
-        self.chk_sound.grid(row=13, column=0, columnspan=2, sticky="w", pady=(2, 10))
+        self.chk_sound.grid(row=9, column=0, columnspan=2, sticky="w", pady=(2, 10))
 
-        # ROW 14: Separator 2
+        # ROW 10: Separator 2
         sep2 = ctk.CTkFrame(self.main_frame, height=1, fg_color=COLOR_DIVIDER)
-        sep2.grid(row=14, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        sep2.grid(row=10, column=0, columnspan=2, sticky="ew", pady=(0, 10))
 
-        # ROW 15: Single Full-Width Action Button: Test Telegram Connection
+        # ROW 11: Action Button: Test Telegram Connection
         self.btn_test = ctk.CTkButton(
             self.main_frame,
-            text="",
+            text="Test Telegram Connection",
             font=self.font_btn_action,
             fg_color=COLOR_SECONDARY_BTN,
             hover_color=COLOR_SECONDARY_BTN_HOVER,
-            height=44,
+            height=42,
             corner_radius=8,
             command=self.on_test_connection,
         )
-        self.btn_test.grid(row=15, column=0, columnspan=2, sticky="ew", pady=(0, 6))
+        self.btn_test.grid(row=11, column=0, columnspan=2, sticky="ew", pady=(0, 6))
 
-        # ROW 16: Inline Status Feedback
+        # ROW 12: Inline Status Feedback
         self.lbl_feedback = ctk.CTkLabel(
             self.main_frame,
             text="",
@@ -678,41 +612,7 @@ class MainWindow(ctk.CTk):
             text_color=COLOR_TEXT_MUTED,
             anchor="center",
         )
-        self.lbl_feedback.grid(row=16, column=0, columnspan=2, sticky="ew", pady=(0, 2))
-
-        # ROW 17: Muted Quick Hint Footer
-        self.lbl_hint = ctk.CTkLabel(
-            self.main_frame,
-            text="",
-            font=self.font_footer,
-            text_color=COLOR_TEXT_DIM,
-            anchor="center",
-        )
-        self.lbl_hint.grid(row=17, column=0, columnspan=2, sticky="ew")
-
-    # =========================================================================
-    # DYNAMIC LOCALIZATION
-    # =========================================================================
-    def _apply_localization(self) -> None:
-        """Applies strings from I18N dictionary to all widgets."""
-        i18n = I18N.get(self._current_lang_name, I18N["Русский"])
-
-        self.lbl_lang.configure(text=i18n["lang_label"])
-        self.lbl_token.configure(text=i18n["token_label"])
-        self.lbl_chat_id.configure(text=i18n["chat_id_label"])
-        self.lbl_display.configure(text=i18n["display_label"])
-        self.lbl_hotkey.configure(text=i18n["hotkey_label"])
-        self.chk_sound.configure(text=i18n["audio_alert"])
-        self.btn_test.configure(text=i18n["btn_test"])
-        self.lbl_hint.configure(text=i18n["guide_hint"])
-
-        self._update_ui_state(is_scanning=self.scanner.is_scanning)
-
-    def on_language_change(self, selected_lang: str) -> None:
-        """Switches active language dynamically and auto-saves."""
-        self._current_lang_name = selected_lang
-        self.auto_save()
-        self._apply_localization()
+        self.lbl_feedback.grid(row=12, column=0, columnspan=2, sticky="ew", pady=(0, 2))
 
     # =========================================================================
     # TRANSPARENT AUTO-SAVE SYSTEM
@@ -734,9 +634,7 @@ class MainWindow(ctk.CTk):
         """Saves current state to config.json automatically without user intervention."""
         token = self.entry_token.get().strip()
         chat_id = self.entry_chat_id.get().strip()
-        hotkey = self.opt_hotkey.get().strip()
         sound = bool(self.chk_sound.get())
-        lang_code = "ru" if self._current_lang_name == "Русский" else "en"
 
         selected_label = self.opt_display.get()
         selected_idx = 0
@@ -749,17 +647,13 @@ class MainWindow(ctk.CTk):
             "telegram_bot_token": token,
             "telegram_chat_id": chat_id,
             "selected_display_index": selected_idx,
-            "hotkey": hotkey,
             "sound_enabled": sound,
-            "language": lang_code,
+            "language": "en",
         }
 
         self.config_manager.save_config(updated_data)
         self.cfg = self.config_manager.load_config()
         self.scanner.display_index = selected_idx
-
-        if hotkey != self._current_hotkey:
-            self._register_global_hotkey(hotkey)
 
     # =========================================================================
     # MASTER ACTION CONTROLLER
@@ -773,7 +667,7 @@ class MainWindow(ctk.CTk):
             self.start_scanning()
 
     def toggle_scanning(self) -> None:
-        """Alias for global hotkey."""
+        """Alias to toggle scanning programmatically."""
         self.on_start_toggle()
 
     def start_scanning(self) -> None:
@@ -787,18 +681,16 @@ class MainWindow(ctk.CTk):
         self._update_ui_state(is_scanning=False)
 
     def _update_ui_state(self, is_scanning: bool) -> None:
-        """Updates master button and status subtitle based on active localization."""
-        i18n = I18N.get(self._current_lang_name, I18N["Русский"])
-
+        """Updates master button and status subtitle."""
         if is_scanning:
-            btn_title = f"{i18n['btn_stop']} ({self._current_hotkey})"
-            subtitle = i18n["status_scanning"]
+            btn_title = "Monitoring Active..."
+            subtitle = "Status: Scanning for queue marker..."
             btn_color = COLOR_SCANNING
             btn_hover = COLOR_SCANNING_HOVER
             sub_color = COLOR_STATUS_ACTIVE
         else:
-            btn_title = f"{i18n['btn_start']} ({self._current_hotkey})"
-            subtitle = i18n["status_idle"]
+            btn_title = "Start Monitoring"
+            subtitle = "Status: Standing by"
             btn_color = COLOR_ACCENT
             btn_hover = COLOR_ACCENT_HOVER
             sub_color = COLOR_TEXT_MUTED
@@ -823,7 +715,6 @@ class MainWindow(ctk.CTk):
 
     def _handle_queue_pop(self) -> None:
         """Handles queue pop: auto-stop, audio chime, and Telegram alert."""
-        lang_code = "ru" if self._current_lang_name == "Русский" else "en"
         self._update_ui_state(is_scanning=False)
 
         # 1. Local PC sound alert
@@ -836,7 +727,7 @@ class MainWindow(ctk.CTk):
 
         if token and chat_id:
             def _send_worker():
-                msg = format_queue_pop_message(lang_code)
+                msg = format_queue_pop_message("en")
                 ok, err = self.telegram_notifier.send_message(token, chat_id, msg)
                 self.after(0, self._on_telegram_result, ok, err)
 
@@ -844,15 +735,14 @@ class MainWindow(ctk.CTk):
 
     def _on_telegram_result(self, ok: bool, err_msg: str) -> None:
         """Updates feedback label on Telegram send outcome."""
-        i18n = I18N.get(self._current_lang_name, I18N["Русский"])
         if ok:
             self.lbl_feedback.configure(
-                text=i18n["status_verified"],
+                text="Connection verified!",
                 text_color=COLOR_STATUS_ACTIVE,
             )
         else:
             self.lbl_feedback.configure(
-                text=f"{i18n['status_failed']}: {err_msg}",
+                text=f"Connection failed: {err_msg}",
                 text_color=COLOR_DANGER,
             )
 
@@ -862,85 +752,53 @@ class MainWindow(ctk.CTk):
     def on_test_connection(self) -> None:
         """Tests Telegram connection in background thread."""
         self.auto_save()
-        i18n = I18N.get(self._current_lang_name, I18N["Русский"])
         token = self.entry_token.get().strip()
         chat_id = self.entry_chat_id.get().strip()
 
         if not token:
             self.lbl_feedback.configure(
-                text=i18n["status_token_empty"],
+                text="Error: Bot Token cannot be empty",
                 text_color=COLOR_DANGER,
             )
             return
 
         if not chat_id:
             self.lbl_feedback.configure(
-                text=i18n["status_chat_id_empty"],
+                text="Error: Chat ID cannot be empty",
                 text_color=COLOR_DANGER,
             )
             return
 
         self.lbl_feedback.configure(
-            text=i18n["status_testing"],
+            text="Testing connection...",
             text_color=COLOR_ACCENT,
         )
         self.btn_test.configure(state="disabled")
 
         def _test_worker():
-            lang_code = "ru" if self._current_lang_name == "Русский" else "en"
-            ok, msg = self.telegram_notifier.test_connection(token, chat_id, lang_code)
+            ok, msg = self.telegram_notifier.test_connection(token, chat_id, "en")
             self.after(0, self._on_test_finished, ok, msg)
 
         threading.Thread(target=_test_worker, daemon=True, name="TgTestThread").start()
 
     def _on_test_finished(self, ok: bool, msg: str) -> None:
         """Handles completion of Telegram connection test."""
-        i18n = I18N.get(self._current_lang_name, I18N["Русский"])
         self.btn_test.configure(state="normal")
 
         if ok:
             self.lbl_feedback.configure(
-                text=f"{i18n['status_verified']} ({msg})",
+                text=f"Connection verified! ({msg})",
                 text_color=COLOR_STATUS_ACTIVE,
             )
         else:
             self.lbl_feedback.configure(
-                text=f"{i18n['status_failed']}: {msg}",
+                text=f"Connection failed: {msg}",
                 text_color=COLOR_DANGER,
             )
-
-    # =========================================================================
-    # GLOBAL HOTKEY MANAGEMENT
-    # =========================================================================
-    def _register_global_hotkey(self, hotkey_str: str) -> None:
-        """Safely binds global toggle hotkey using keyboard library."""
-        try:
-            import keyboard
-
-            if self._hotkey_hook:
-                try:
-                    keyboard.remove_hotkey(self._hotkey_hook)
-                except Exception:
-                    pass
-
-            self._hotkey_hook = keyboard.add_hotkey(
-                hotkey_str,
-                lambda: self.after(0, self.on_start_toggle),
-            )
-            self._current_hotkey = hotkey_str
-        except Exception as e:
-            logger.warning(f"Could not register hotkey {hotkey_str}: {e}")
 
     def on_closing(self) -> None:
         """Performs clean shutdown on window close with auto-save."""
         logger.info("Application shutting down...")
         self.auto_save()
         self.scanner.stop()
-
-        try:
-            import keyboard
-            keyboard.unhook_all_hotkeys()
-        except Exception:
-            pass
-
         self.destroy()

@@ -13,7 +13,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "telegram_bot_token": "",
     "telegram_chat_id": "",
     "selected_display_index": 0,
-    "hotkey": "F9",
     "sound_enabled": True,
     "scan_interval_ms": 300,
     "tolerance": 25,

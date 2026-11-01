@@ -14,14 +14,14 @@ It passively reads an on-screen pixel rendered by the companion addon via the Wi
 
 ### Quick Start
 1. **Download**: Grab `AikoArenaNotifier.exe` from [Latest Releases](https://github.com/aiko-tmpx/arena-notifier-app/releases/latest).
-2. **Addon**: Install the companion addon via [CurseForge](https://www.curseforge.com/wow/addons/aiko-arena-notifier) (or drop it into `Interface/AddOns/`). Run `/aan test` in-game to verify the marker.
-3. **Launch**: Run `AikoArenaNotifier.exe`.
+2. **Addon**: Install the companion addon via [CurseForge](https://www.curseforge.com/wow/addons/aiko-arena-notifier) or [GitHub](https://github.com/aiko-tmpx/arena-notifier-addon) (or drop it into `Interface/AddOns/`). Run `/aan test` in-game to verify the marker.
+3. **Launch**: Run `AikoArenaNotifier.exe`. Select your game display and click **Start Monitoring**.
 
 ### Telegram Setup (BYOB)
 1. Get a **Bot Token**: message [@BotFather](https://t.me/BotFather) (`/newbot`).
 2. Get your **Chat ID**: message [@userinfobot](https://t.me/userinfobot) (press Start).
 3. **IMPORTANT**: Open your newly created bot in Telegram and press **START** (or send `/start`). Telegram blocks bots from messaging users until the chat is initiated by the user.
-4. Paste the Token and Chat ID into the app, click **Test Telegram Connection**, and arm with your hotkey (default: `F12`).
+4. Paste the Token and Chat ID into the app, click **Test Telegram Connection**, and click **Start Monitoring** when you queue up.
 
 ### Anti-Cheat Safety
 | Check | Typical Bots / Cheats | AikoArenaNotifier | Status |
@@ -45,14 +45,14 @@ It passively reads an on-screen pixel rendered by the companion addon via the Wi
 
 ### Быстрый старт
 1. **Скачать**: Загрузите `AikoArenaNotifier.exe` со страницы [Последних релизов](https://github.com/aiko-tmpx/arena-notifier-app/releases/latest).
-2. **Аддон**: Установите аддон через [CurseForge](https://www.curseforge.com/wow/addons/aiko-arena-notifier) (или вручную в `Interface/AddOns/`). Проверьте работу командой `/aan test`.
-3. **Запуск**: Запустите `AikoArenaNotifier.exe`.
+2. **Аддон**: Установите аддон через [CurseForge](https://www.curseforge.com/wow/addons/aiko-arena-notifier) или [GitHub](https://github.com/aiko-tmpx/arena-notifier-addon) (или вручную в `Interface/AddOns/`). Проверьте работу командой `/aan test`.
+3. **Запуск**: Запустите `AikoArenaNotifier.exe`, выберите монитор с игрой и нажмите **Start Monitoring**.
 
 ### Настройка Telegram
 1. Получите **токен бота**: напишите [@BotFather](https://t.me/BotFather) (`/newbot`).
 2. Узнайте свой **Chat ID**: напишите [@userinfobot](https://t.me/userinfobot) (нажмите Start).
 3. **ВАЖНО**: Откройте своего созданного бота в Telegram и обязательно нажмите **СТАРТ** (или отправьте `/start`). Telegram запрещает ботам писать пользователям первыми.
-4. Вставьте данные в программу, нажмите **Проверить Telegram** и активируйте мониторинг по горячей клавише (по умолчанию `F12`).
+4. Вставьте данные в программу, нажмите **Проверить Telegram** и нажмите кнопку **Start Monitoring** при вставании в очередь.
 
 ### Безопасность и античит
 | Вектор проверки | Обычные боты / читы | AikoArenaNotifier | Статус |
