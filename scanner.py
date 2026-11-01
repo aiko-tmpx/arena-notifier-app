@@ -63,23 +63,25 @@ def enable_dpi_awareness() -> bool:
 
 
 def is_addon_purple(r: int, g: int, b: int, tolerance: int = 30) -> bool:
-    """Matches the companion WoW addon's #A330C9 (RGB: 163, 48, 201)."""
+    """Matches legacy companion WoW addon's #A330C9 (RGB: 163, 48, 201). Deprecated."""
     return abs(r - 163) <= tolerance and abs(g - 48) <= tolerance and abs(b - 201) <= tolerance
 
 
-def is_pure_magenta(r: int, g: int, b: int) -> bool:
-    """Matches pure magenta #FF00FF (RGB: 255, 0, 255) with tolerance."""
-    return r > 230 and g < 20 and b > 230
+def is_pure_magenta(r: int, g: int, b: int, r_min: int = 220, g_max: int = 25, b_min: int = 220) -> bool:
+    """Matches pure magenta #FF00FF (RGB: 255, 0, 255) with HDR/gamma tolerance."""
+    return r >= r_min and g <= g_max and b >= b_min
 
 
 def is_magenta_pop(r: int, g: int, b: int) -> bool:
-    """Checks whether the sampled RGB matches the WoW companion addon's pop marker.
-    
-    Supports both:
-    1. The companion addon's #A330C9 (RGB: 163, 48, 201)
-    2. Pure magenta #FF00FF (RGB: 255, 0, 255) with R > 230, G < 20, B > 230
+    """Checks whether the sampled RGB matches the companion addon's #FF00FF pop marker.
+
+    Target: Pure Magenta #FF00FF (RGB: 255, 0, 255)
+    Tolerates minor display color profiles/gamma while rejecting normal gameplay:
+    - Red: r >= 220
+    - Green: g <= 25
+    - Blue: b >= 220
     """
-    return is_addon_purple(r, g, b) or is_pure_magenta(r, g, b)
+    return is_pure_magenta(r, g, b)
 
 
 def calculate_target_coords(

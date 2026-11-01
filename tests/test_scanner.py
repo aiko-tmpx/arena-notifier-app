@@ -3,15 +3,13 @@ from scanner import is_magenta_pop, get_monitors, calculate_target_coords
 
 
 def test_is_magenta_pop_true():
-    # Exact magenta
+    # Exact pure magenta #FF00FF (RGB: 255, 0, 255)
     assert is_magenta_pop(255, 0, 255) is True
-    # Near magenta within tolerance (R > 230, G < 20, B > 230)
+    # Near magenta within tolerance (R >= 220, G <= 25, B >= 220)
     assert is_magenta_pop(235, 10, 240) is True
     assert is_magenta_pop(250, 19, 250) is True
     assert is_magenta_pop(245, 0, 254) is True
-    # Companion addon purple #A330C9 (RGB: 163, 48, 201)
-    assert is_magenta_pop(163, 48, 201) is True
-    assert is_magenta_pop(160, 45, 205) is True
+    assert is_magenta_pop(220, 25, 220) is True
 
 
 def test_is_magenta_pop_false():
@@ -27,10 +25,13 @@ def test_is_magenta_pop_false():
     assert is_magenta_pop(255, 50, 255) is False
     # Dim magenta
     assert is_magenta_pop(200, 0, 200) is False
+    # Old legacy purple #A330C9 should no longer trigger
+    assert is_magenta_pop(163, 48, 201) is False
+    assert is_magenta_pop(160, 45, 205) is False
     # Edge values
-    assert is_magenta_pop(230, 10, 255) is False
-    assert is_magenta_pop(255, 20, 255) is False
-    assert is_magenta_pop(255, 10, 230) is False
+    assert is_magenta_pop(219, 10, 255) is False
+    assert is_magenta_pop(255, 26, 255) is False
+    assert is_magenta_pop(255, 10, 219) is False
 
 
 def test_calculate_target_coords():
