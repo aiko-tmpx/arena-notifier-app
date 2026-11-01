@@ -13,20 +13,11 @@
 <a name="english"></a>
 ## English
 
-### 1. Overview & Value Proposition
+### 1. What is this?
 
-**AikoArenaNotifier** is an ultra-lightweight, bloat-free desktop companion utility designed for competitive World of Warcraft (Retail) PvP players. While waiting in lengthy Arena or Solo Shuffle queues, you no longer need to remain anchored to your desk or monitor. 
+A lightweight Windows desktop tool that monitors your World of Warcraft screen and sends a Telegram push alert when an Arena or Solo Shuffle queue pops.
 
-The moment your queue pops, AikoArenaNotifier detects the in-game event and sends an instant push alert straight to your phone, smartwatch, or desktop via Telegram:
-
-```text
-🚨 QUEUE POPPED! 🚨
-```
-
-- **Zero Game Interaction**: Operates entirely outside the WoW process environment.
-- **100% Ban-Safe**: Employs passive OS-level desktop pixel sampling (`GetDC(0)` + `GetPixel`).
-- **Zero Synthetic Input**: The client never automates clicks or gameplay inputs. You walk up to your PC and click "Enter Battle" yourself.
-- **Single-Window Utility**: Fixed compact layout (540x650), modern typography, instant auto-save, and bilingual interface (English / Русский).
+It passively samples an on-screen pixel rendered by the companion addon via the Windows desktop presentation buffer (`GetDC(0)`). It does not hook into `Wow.exe`, does not inspect or modify game memory, and does not simulate user inputs.
 
 ---
 
@@ -195,20 +186,11 @@ The resulting binary will be created at `dist\AikoArenaNotifier.exe`.
 <a name="русский"></a>
 ## Русский
 
-### 1. Обзор и преимущества
+### 1. Что это?
 
-**AikoArenaNotifier** — это легковесный настольный компаньон без лишнего мусора для активных PvP-игроков World of Warcraft (Retail). Во время ожидания долгой очереди на Арену или Solo Shuffle вам больше не нужно сидеть привязанным к монитору.
+Небольшая утилита под Windows, которая отслеживает появление очереди на Арену или Solo Shuffle в World of Warcraft и отправляет push-уведомление в Telegram.
 
-В тот самый момент, когда очередь прокнет, утилита мгновенно зафиксирует появление приглашения и отправит push-уведомление прямо на ваш телефон или смарт-часы через Telegram:
-
-```text
-🚨 QUEUE POPPED! 🚨
-```
-
-- **Полное отсутствие взаимодействия с процессом игры**: Работает исключительно на уровне рабочего стола Windows.
-- **100% Защита от бана**: Пассивное считывание цвета экранного пикселя через стандартный системный интерфейс Windows GDI (`GetDC(0)` + `GetPixel`).
-- **Никакой автоматизации**: Программа не нажимает кнопки за вас. Вы получаете уведомление на телефон, подходите к компьютеру и сами подтверждаете вход в бой.
-- **Удобный компактный интерфейс**: Фиксированное аккуратное окно (540x650), современная типографика Inter, мгновенное автосохранение настроек и поддержка русского и английского языков.
+Работает через пассивное чтение системного пикселя на экране (`GetDC(0)`), который отображает внутриигровой аддон. Программа не внедряется в `Wow.exe`, не читает память игры и не эмулирует нажатия клавиш или мыши.
 
 ---
 
