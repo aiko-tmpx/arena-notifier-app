@@ -63,3 +63,50 @@ def test_auto_save_mechanism(test_app):
     
     assert test_app.cfg["telegram_bot_token"] == "autosave_token_abc"
     assert test_app.cfg["telegram_chat_id"] == "99887766"
+
+
+def test_lock_toggle_behavior(test_app):
+    # Verify icons loaded
+    assert test_app.icon_chevron is not None
+    assert test_app.icon_lock is not None
+    assert test_app.icon_unlock is not None
+
+    # Verify initial unlock state on blank fields
+    assert test_app.btn_lock_token is not None
+    assert test_app.btn_lock_chat_id is not None
+    assert test_app.entry_token.cget("state") == "normal"
+    assert test_app.entry_chat_id.cget("state") == "normal"
+
+    # Toggle token lock
+    test_app.toggle_token_lock()
+    assert test_app._token_locked is True
+    assert test_app.entry_token.cget("state") == "readonly"
+    assert test_app.btn_lock_token.cget("fg_color") == "#1E2433"
+
+    test_app.toggle_token_lock()
+    assert test_app._token_locked is False
+    assert test_app.entry_token.cget("state") == "normal"
+    assert test_app.btn_lock_token.cget("fg_color") == "#374151"
+
+    # Toggle chat ID lock
+    test_app.toggle_chat_id_lock()
+    assert test_app._chat_id_locked is True
+    assert test_app.entry_chat_id.cget("state") == "readonly"
+    assert test_app.btn_lock_chat_id.cget("fg_color") == "#1E2433"
+
+    test_app.toggle_chat_id_lock()
+    assert test_app._chat_id_locked is False
+    assert test_app.entry_chat_id.cget("state") == "normal"
+    assert test_app.btn_lock_chat_id.cget("fg_color") == "#374151"
+
+
+def test_clean_option_menus_chevron(test_app):
+    from gui import CleanOptionMenu
+
+    assert isinstance(test_app.opt_lang, CleanOptionMenu)
+    assert isinstance(test_app.opt_display, CleanOptionMenu)
+    assert isinstance(test_app.opt_hotkey, CleanOptionMenu)
+
+    test_app.opt_lang._draw()
+    assert len(test_app.opt_lang._canvas.find_withtag("clean_chevron")) > 0
+    assert len(test_app.opt_lang._canvas.find_withtag("dropdown_arrow")) == 0

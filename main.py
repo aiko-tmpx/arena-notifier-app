@@ -59,8 +59,80 @@ def ensure_and_load_fonts() -> None:
                 logger.debug(f"Failed to register font {font_name}: {e}")
 
 
-# Pre-load Inter font into GDI
+def ensure_and_load_icons() -> None:
+    """Ensures UI vector and raster icons (chevron-down, lock, unlock) exist in assets/icons/."""
+    base_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    icons_dir = os.path.join(base_dir, "assets", "icons")
+    os.makedirs(icons_dir, exist_ok=True)
+
+    required_pngs = ["chevron-down.png", "lock.png", "unlock.png"]
+    if all(os.path.exists(os.path.join(icons_dir, f)) for f in required_pngs):
+        return
+
+    try:
+        from PIL import Image, ImageDraw
+
+        # 1. Chevron Down (48x48 supersampled)
+        chev_path = os.path.join(icons_dir, "chevron-down.png")
+        if not os.path.exists(chev_path):
+            scale = 8
+            cs = 48 * scale
+            unit = cs / 24.0
+            stroke = int(2.2 * unit)
+            img = Image.new("RGBA", (cs, cs), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            pts = [(6.5 * unit, 9.5 * unit), (12.0 * unit, 15.0 * unit), (17.5 * unit, 9.5 * unit)]
+            draw.line(pts, fill="#94A3B8", width=stroke, joint="round")
+            r = stroke / 2.0
+            for p in [pts[0], pts[2]]:
+                draw.ellipse([p[0] - r, p[1] - r, p[0] + r, p[1] + r], fill="#94A3B8")
+            img.resize((48, 48), Image.Resampling.LANCZOS).save(chev_path)
+
+        # 2. Lock (48x48 supersampled)
+        lock_path = os.path.join(icons_dir, "lock.png")
+        if not os.path.exists(lock_path):
+            scale = 8
+            cs = 48 * scale
+            unit = cs / 24.0
+            stroke = int(2.2 * unit)
+            img = Image.new("RGBA", (cs, cs), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            bx0, by0, bx1, by1 = 3.5 * unit, 11 * unit, 20.5 * unit, 21.5 * unit
+            draw.rounded_rectangle([bx0, by0, bx1, by1], radius=int(2.5 * unit), outline="#FFFFFF", width=stroke)
+            arc_box = [7 * unit, 2.5 * unit, 17 * unit, 12.5 * unit]
+            draw.arc(arc_box, start=180, end=0, fill="#FFFFFF", width=stroke)
+            draw.line([(7 * unit, 7.5 * unit), (7 * unit, 11.5 * unit)], fill="#FFFFFF", width=stroke)
+            draw.line([(17 * unit, 7.5 * unit), (17 * unit, 11.5 * unit)], fill="#FFFFFF", width=stroke)
+            draw.ellipse([11 * unit, 15 * unit, 13 * unit, 17 * unit], fill="#FFFFFF")
+            img.resize((48, 48), Image.Resampling.LANCZOS).save(lock_path)
+
+        # 3. Unlock (48x48 supersampled)
+        unlock_path = os.path.join(icons_dir, "unlock.png")
+        if not os.path.exists(unlock_path):
+            scale = 8
+            cs = 48 * scale
+            unit = cs / 24.0
+            stroke = int(2.2 * unit)
+            img = Image.new("RGBA", (cs, cs), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            bx0, by0, bx1, by1 = 3.5 * unit, 11 * unit, 20.5 * unit, 21.5 * unit
+            draw.rounded_rectangle([bx0, by0, bx1, by1], radius=int(2.5 * unit), outline="#FFFFFF", width=stroke)
+            arc_box = [7 * unit, 2.5 * unit, 17 * unit, 12.5 * unit]
+            draw.arc(arc_box, start=180, end=15, fill="#FFFFFF", width=stroke)
+            draw.line([(7 * unit, 7.5 * unit), (7 * unit, 11.5 * unit)], fill="#FFFFFF", width=stroke)
+            tip_x, tip_y = 16.5 * unit, 6.2 * unit
+            r = stroke / 2.0
+            draw.ellipse([tip_x - r, tip_y - r, tip_x + r, tip_y + r], fill="#FFFFFF")
+            draw.ellipse([11 * unit, 15 * unit, 13 * unit, 17 * unit], fill="#FFFFFF")
+            img.resize((48, 48), Image.Resampling.LANCZOS).save(unlock_path)
+
+    except Exception as e:
+        logger.debug(f"Failed ensuring icon assets: {e}")
+
+
+# Pre-load Inter font into GDI and ensure UI icons
 ensure_and_load_fonts()
+ensure_and_load_icons()
 
 import customtkinter as ctk
 

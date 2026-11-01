@@ -86,6 +86,77 @@ I18N = {
 }
 
 
+def ensure_and_load_icons() -> None:
+    """Ensures UI vector and raster icons (chevron-down, lock, unlock) exist in assets/icons/."""
+    base_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    icons_dir = os.path.join(base_dir, "assets", "icons")
+    os.makedirs(icons_dir, exist_ok=True)
+
+    required_pngs = ["chevron-down.png", "lock.png", "unlock.png"]
+    if all(os.path.exists(os.path.join(icons_dir, f)) for f in required_pngs):
+        return
+
+    try:
+        from PIL import Image, ImageDraw
+
+        # 1. Chevron Down (48x48 supersampled)
+        chev_path = os.path.join(icons_dir, "chevron-down.png")
+        if not os.path.exists(chev_path):
+            scale = 8
+            cs = 48 * scale
+            unit = cs / 24.0
+            stroke = int(2.2 * unit)
+            img = Image.new("RGBA", (cs, cs), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            pts = [(6.5 * unit, 9.5 * unit), (12.0 * unit, 15.0 * unit), (17.5 * unit, 9.5 * unit)]
+            draw.line(pts, fill="#94A3B8", width=stroke, joint="round")
+            r = stroke / 2.0
+            for p in [pts[0], pts[2]]:
+                draw.ellipse([p[0] - r, p[1] - r, p[0] + r, p[1] + r], fill="#94A3B8")
+            img.resize((48, 48), Image.Resampling.LANCZOS).save(chev_path)
+
+        # 2. Lock (48x48 supersampled)
+        lock_path = os.path.join(icons_dir, "lock.png")
+        if not os.path.exists(lock_path):
+            scale = 8
+            cs = 48 * scale
+            unit = cs / 24.0
+            stroke = int(2.2 * unit)
+            img = Image.new("RGBA", (cs, cs), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            bx0, by0, bx1, by1 = 3.5 * unit, 11 * unit, 20.5 * unit, 21.5 * unit
+            draw.rounded_rectangle([bx0, by0, bx1, by1], radius=int(2.5 * unit), outline="#FFFFFF", width=stroke)
+            arc_box = [7 * unit, 2.5 * unit, 17 * unit, 12.5 * unit]
+            draw.arc(arc_box, start=180, end=0, fill="#FFFFFF", width=stroke)
+            draw.line([(7 * unit, 7.5 * unit), (7 * unit, 11.5 * unit)], fill="#FFFFFF", width=stroke)
+            draw.line([(17 * unit, 7.5 * unit), (17 * unit, 11.5 * unit)], fill="#FFFFFF", width=stroke)
+            draw.ellipse([11 * unit, 15 * unit, 13 * unit, 17 * unit], fill="#FFFFFF")
+            img.resize((48, 48), Image.Resampling.LANCZOS).save(lock_path)
+
+        # 3. Unlock (48x48 supersampled)
+        unlock_path = os.path.join(icons_dir, "unlock.png")
+        if not os.path.exists(unlock_path):
+            scale = 8
+            cs = 48 * scale
+            unit = cs / 24.0
+            stroke = int(2.2 * unit)
+            img = Image.new("RGBA", (cs, cs), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            bx0, by0, bx1, by1 = 3.5 * unit, 11 * unit, 20.5 * unit, 21.5 * unit
+            draw.rounded_rectangle([bx0, by0, bx1, by1], radius=int(2.5 * unit), outline="#FFFFFF", width=stroke)
+            arc_box = [7 * unit, 2.5 * unit, 17 * unit, 12.5 * unit]
+            draw.arc(arc_box, start=180, end=15, fill="#FFFFFF", width=stroke)
+            draw.line([(7 * unit, 7.5 * unit), (7 * unit, 11.5 * unit)], fill="#FFFFFF", width=stroke)
+            tip_x, tip_y = 16.5 * unit, 6.2 * unit
+            r = stroke / 2.0
+            draw.ellipse([tip_x - r, tip_y - r, tip_x + r, tip_y + r], fill="#FFFFFF")
+            draw.ellipse([11 * unit, 15 * unit, 13 * unit, 17 * unit], fill="#FFFFFF")
+            img.resize((48, 48), Image.Resampling.LANCZOS).save(unlock_path)
+
+    except Exception as e:
+        logger.debug(f"Failed ensuring icon assets: {e}")
+
+
 def set_app_icon(window: ctk.CTk, icon_filename: str = "assets/icon.ico") -> None:
     """Sets high-resolution icon for Windows taskbar and titlebar."""
     base_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
@@ -105,6 +176,49 @@ def set_app_icon(window: ctk.CTk, icon_filename: str = "assets/icon.ico") -> Non
             window._icon_photo_ref = img  # Keep reference to prevent GC
         except Exception:
             pass
+
+
+class CleanOptionMenu(ctk.CTkOptionMenu):
+    """OptionMenu replacing the default blurry bitmap arrow with a clean high-resolution chevron."""
+
+    def __init__(self, *args, chevron_image: Optional[ctk.CTkImage] = None, **kwargs):
+        self._custom_chevron_image = chevron_image
+        self._custom_chevron_photo = None
+        super().__init__(*args, **kwargs)
+
+    def _draw(self, no_color_updates: bool = False) -> None:
+        super()._draw(no_color_updates)
+        self._draw_clean_chevron()
+
+    def _draw_clean_chevron(self) -> None:
+        self._canvas.delete("dropdown_arrow")
+        self._canvas.delete("clean_chevron")
+
+        x = self._apply_widget_scaling(self._current_width - (self._current_height / 2))
+        y = self._apply_widget_scaling(self._current_height / 2)
+
+        if self._custom_chevron_image is not None:
+            photo = self._custom_chevron_image.create_scaled_photo_image(
+                self._get_widget_scaling(),
+                self._get_appearance_mode(),
+            )
+            self._custom_chevron_photo = photo
+            self._canvas.create_image(x, y, image=photo, tags="clean_chevron")
+        else:
+            size = round(4 * self._get_widget_scaling())
+            self._canvas.create_line(
+                x - size,
+                y - round(size * 0.6),
+                x,
+                y + round(size * 0.6),
+                x + size,
+                y - round(size * 0.6),
+                tags="clean_chevron",
+                width=max(1, round(1.8 * self._get_widget_scaling())),
+                fill=COLOR_TEXT_MUTED,
+                capstyle="round",
+                joinstyle="round",
+            )
 
 
 class MainWindow(ctk.CTk):
@@ -143,6 +257,10 @@ class MainWindow(ctk.CTk):
         # Set High-Resolution Windows App Icon
         set_app_icon(self)
 
+        # Ensure and load UI icons
+        ensure_and_load_icons()
+        self._load_icons()
+
         # Monitored display list
         self.monitors = get_monitors()
 
@@ -178,6 +296,70 @@ class MainWindow(ctk.CTk):
         self.font_checkbox = ctk.CTkFont(family=FONT_FAMILY, size=13)
         self.font_btn_action = ctk.CTkFont(family=FONT_FAMILY, size=13, weight="bold")
         self.font_footer = ctk.CTkFont(family=FONT_FAMILY, size=11)
+
+    def _load_icons(self) -> None:
+        """Loads high-resolution UI icons for dropdown chevrons and lock toggles."""
+        base_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+        icons_dir = os.path.join(base_dir, "assets", "icons")
+
+        chev_path = os.path.join(icons_dir, "chevron-down.png")
+        if os.path.exists(chev_path):
+            chev_img = Image.open(chev_path)
+            self.icon_chevron = ctk.CTkImage(light_image=chev_img, dark_image=chev_img, size=(12, 12))
+        else:
+            self.icon_chevron = None
+
+        lock_path = os.path.join(icons_dir, "lock.png")
+        if os.path.exists(lock_path):
+            lock_img = Image.open(lock_path)
+            self.icon_lock = ctk.CTkImage(light_image=lock_img, dark_image=lock_img, size=(16, 16))
+        else:
+            self.icon_lock = None
+
+        unlock_path = os.path.join(icons_dir, "unlock.png")
+        if os.path.exists(unlock_path):
+            unlock_img = Image.open(unlock_path)
+            self.icon_unlock = ctk.CTkImage(light_image=unlock_img, dark_image=unlock_img, size=(16, 16))
+        else:
+            self.icon_unlock = None
+
+    def toggle_token_lock(self) -> None:
+        """Toggles read-only lock state for Telegram Bot Token entry."""
+        self._token_locked = not self._token_locked
+        if self._token_locked:
+            self.entry_token.configure(state="readonly")
+            self.btn_lock_token.configure(
+                image=self.icon_lock,
+                fg_color="#1E2433",
+                hover_color="#2B3345",
+            )
+        else:
+            self.entry_token.configure(state="normal")
+            self.btn_lock_token.configure(
+                image=self.icon_unlock,
+                fg_color="#374151",
+                hover_color="#4B5563",
+            )
+            self.entry_token.focus()
+
+    def toggle_chat_id_lock(self) -> None:
+        """Toggles read-only lock state for Telegram Chat ID entry."""
+        self._chat_id_locked = not self._chat_id_locked
+        if self._chat_id_locked:
+            self.entry_chat_id.configure(state="readonly")
+            self.btn_lock_chat_id.configure(
+                image=self.icon_lock,
+                fg_color="#1E2433",
+                hover_color="#2B3345",
+            )
+        else:
+            self.entry_chat_id.configure(state="normal")
+            self.btn_lock_chat_id.configure(
+                image=self.icon_unlock,
+                fg_color="#374151",
+                hover_color="#4B5563",
+            )
+            self.entry_chat_id.focus()
 
     def _setup_layout(self) -> None:
         """Constructs compact single-window layout using strictly .grid()."""
@@ -230,7 +412,7 @@ class MainWindow(ctk.CTk):
         self.lbl_lang.grid(row=3, column=0, columnspan=2, sticky="w", pady=(0, 2))
 
         # ROW 4: Form - Language OptionMenu
-        self.opt_lang = ctk.CTkOptionMenu(
+        self.opt_lang = CleanOptionMenu(
             self.main_frame,
             values=["Русский", "English"],
             font=self.font_input,
@@ -239,6 +421,7 @@ class MainWindow(ctk.CTk):
             fg_color=COLOR_SURFACE_ALT,
             button_color="#232734",
             button_hover_color=COLOR_ACCENT,
+            chevron_image=self.icon_chevron,
             command=self.on_language_change,
         )
         self.opt_lang.set(self._current_lang_name)
@@ -254,9 +437,14 @@ class MainWindow(ctk.CTk):
         )
         self.lbl_token.grid(row=5, column=0, columnspan=2, sticky="w", pady=(0, 2))
 
-        # ROW 6: Form - Telegram Bot Token Entry (with auto-save bindings)
+        # ROW 6: Form - Telegram Bot Token Container (Entry + Lock Button)
+        self.token_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.token_frame.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        self.token_frame.grid_columnconfigure(0, weight=1)
+        self.token_frame.grid_columnconfigure(1, weight=0)
+
         self.entry_token = ctk.CTkEntry(
-            self.main_frame,
+            self.token_frame,
             show="*",
             font=self.font_input,
             height=36,
@@ -265,11 +453,28 @@ class MainWindow(ctk.CTk):
             border_color=COLOR_INPUT_BORDER,
             border_width=1,
         )
-        self.entry_token.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        self.entry_token.grid(row=0, column=0, sticky="ew", padx=(0, 8))
         if self.cfg.get("telegram_bot_token"):
             self.entry_token.insert(0, self.cfg["telegram_bot_token"])
         self.entry_token.bind("<KeyRelease>", self._on_entry_key_release)
         self.entry_token.bind("<FocusOut>", self._on_entry_focus_out)
+
+        self._token_locked = bool(self.cfg.get("telegram_bot_token"))
+        if self._token_locked:
+            self.entry_token.configure(state="readonly")
+
+        self.btn_lock_token = ctk.CTkButton(
+            self.token_frame,
+            text="",
+            image=self.icon_lock if self._token_locked else self.icon_unlock,
+            width=36,
+            height=36,
+            corner_radius=6,
+            fg_color="#1E2433" if self._token_locked else "#374151",
+            hover_color="#2B3345" if self._token_locked else "#4B5563",
+            command=self.toggle_token_lock,
+        )
+        self.btn_lock_token.grid(row=0, column=1, sticky="e")
 
         # ROW 7: Form - Telegram Chat ID Label
         self.lbl_chat_id = ctk.CTkLabel(
@@ -281,9 +486,14 @@ class MainWindow(ctk.CTk):
         )
         self.lbl_chat_id.grid(row=7, column=0, columnspan=2, sticky="w", pady=(0, 2))
 
-        # ROW 8: Form - Telegram Chat ID Entry (with auto-save bindings)
+        # ROW 8: Form - Telegram Chat ID Container (Entry + Lock Button)
+        self.chat_id_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.chat_id_frame.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        self.chat_id_frame.grid_columnconfigure(0, weight=1)
+        self.chat_id_frame.grid_columnconfigure(1, weight=0)
+
         self.entry_chat_id = ctk.CTkEntry(
-            self.main_frame,
+            self.chat_id_frame,
             font=self.font_input,
             height=36,
             corner_radius=8,
@@ -291,11 +501,28 @@ class MainWindow(ctk.CTk):
             border_color=COLOR_INPUT_BORDER,
             border_width=1,
         )
-        self.entry_chat_id.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        self.entry_chat_id.grid(row=0, column=0, sticky="ew", padx=(0, 8))
         if self.cfg.get("telegram_chat_id"):
             self.entry_chat_id.insert(0, str(self.cfg["telegram_chat_id"]))
         self.entry_chat_id.bind("<KeyRelease>", self._on_entry_key_release)
         self.entry_chat_id.bind("<FocusOut>", self._on_entry_focus_out)
+
+        self._chat_id_locked = bool(self.cfg.get("telegram_chat_id"))
+        if self._chat_id_locked:
+            self.entry_chat_id.configure(state="readonly")
+
+        self.btn_lock_chat_id = ctk.CTkButton(
+            self.chat_id_frame,
+            text="",
+            image=self.icon_lock if self._chat_id_locked else self.icon_unlock,
+            width=36,
+            height=36,
+            corner_radius=6,
+            fg_color="#1E2433" if self._chat_id_locked else "#374151",
+            hover_color="#2B3345" if self._chat_id_locked else "#4B5563",
+            command=self.toggle_chat_id_lock,
+        )
+        self.btn_lock_chat_id.grid(row=0, column=1, sticky="e")
 
         # ROW 9: Form - Target Game Display Label
         self.lbl_display = ctk.CTkLabel(
@@ -316,7 +543,7 @@ class MainWindow(ctk.CTk):
             else monitor_labels[0]
         )
 
-        self.opt_display = ctk.CTkOptionMenu(
+        self.opt_display = CleanOptionMenu(
             self.main_frame,
             values=monitor_labels,
             font=self.font_input,
@@ -325,6 +552,7 @@ class MainWindow(ctk.CTk):
             fg_color=COLOR_SURFACE_ALT,
             button_color="#232734",
             button_hover_color=COLOR_ACCENT,
+            chevron_image=self.icon_chevron,
             command=lambda _: self.auto_save(),
         )
         self.opt_display.set(default_mon_label)
@@ -346,7 +574,7 @@ class MainWindow(ctk.CTk):
         if current_hk not in hotkey_options:
             hotkey_options.append(current_hk)
 
-        self.opt_hotkey = ctk.CTkOptionMenu(
+        self.opt_hotkey = CleanOptionMenu(
             self.main_frame,
             values=hotkey_options,
             font=self.font_input,
@@ -355,6 +583,7 @@ class MainWindow(ctk.CTk):
             fg_color=COLOR_SURFACE_ALT,
             button_color="#232734",
             button_hover_color=COLOR_ACCENT,
+            chevron_image=self.icon_chevron,
             command=lambda _: self.auto_save(),
         )
         self.opt_hotkey.set(current_hk)
