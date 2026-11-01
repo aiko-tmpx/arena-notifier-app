@@ -1,5 +1,5 @@
-"""Modern Single Page Application GUI for AikoArenaNotifier built with CustomTkinter.
-Features dark theme, sidebar navigation, live diagnostics, settings, and multilingual guide.
+"""Minimalist, refined Single Page Application GUI for AikoArenaNotifier.
+Features cohesive dark slate palette, violet primary accents, and zero visual clutter.
 """
 
 from __future__ import annotations
@@ -18,21 +18,27 @@ from scanner import ScreenScanner, get_monitors
 
 logger = logging.getLogger("AikoArenaNotifier.GUI")
 
-# Palette constants
-COLOR_BG = "#0f0f14"
-COLOR_SIDEBAR = "#16161f"
-COLOR_CARD = "#1c1c28"
-COLOR_CARD_BORDER = "#2b2b3d"
-COLOR_TEXT_PRIMARY = "#f4f4f6"
-COLOR_TEXT_MUTED = "#9393a6"
-COLOR_ACCENT_PURPLE = "#a330c9"
-COLOR_ACCENT_HOVER = "#8824a8"
-COLOR_SUCCESS_GREEN = "#10b981"
-COLOR_SUCCESS_HOVER = "#059669"
-COLOR_DANGER_RED = "#ef4444"
-COLOR_DANGER_HOVER = "#dc2626"
-COLOR_STATUS_IDLE = "#71717a"
-COLOR_STATUS_SCANNING = "#10b981"
+# =============================================================================
+# COHESIVE MINIMALIST COLOR PALETTE
+# =============================================================================
+COLOR_BG = "#0F1117"             # Deep slate dark surface
+COLOR_SIDEBAR = "#141721"        # Elevated sidebar tone
+COLOR_CARD = "#1D212C"           # Elevated card surface
+COLOR_CARD_BORDER = "#282F3E"    # Subtle card border
+COLOR_SURFACE_ALT = "#161922"    # Input & badge surface
+COLOR_INPUT_BORDER = "#2B3345"   # Input field border
+COLOR_NAV_ACTIVE = "#252B3B"     # Active navigation item background
+COLOR_ACCENT = "#7C3AED"         # Violet / Purple primary accent
+COLOR_ACCENT_HOVER = "#6D28D9"   # Darker violet hover
+COLOR_ACCENT_BAR = "#8B5CF6"     # Left accent indicator bar
+COLOR_TEXT_PRIMARY = "#F3F4F6"   # Crisp clean off-white
+COLOR_TEXT_MUTED = "#9CA3AF"     # Neutral secondary text
+COLOR_TEXT_DIM = "#6B7280"       # Dim timestamp & metadata text
+COLOR_STATUS_ACTIVE = "#10B981"  # Emerald green (Scanning)
+COLOR_STATUS_IDLE = "#6B7280"    # Slate grey (Idle)
+COLOR_STATUS_ALERT = "#EC4899"   # Accent magenta (Triggered)
+COLOR_DANGER = "#EF4444"         # Stop action red
+COLOR_DANGER_HOVER = "#DC2626"
 
 
 class MainWindow(ctk.CTk):
@@ -55,7 +61,7 @@ class MainWindow(ctk.CTk):
         self._hotkey_hook = None
         self._current_hotkey = self.cfg.get("hotkey", "F9")
 
-        # Window configuration
+        # Fixed Window geometry
         self.title("AikoArenaNotifier")
         self.geometry("780x520")
         self.minsize(780, 520)
@@ -77,6 +83,9 @@ class MainWindow(ctk.CTk):
             on_pop=self._on_scanner_pop,
         )
 
+        # In-memory recent events buffer (keeps last 5 events)
+        self._recent_events: List[str] = []
+
         # Build UI layout
         self._setup_layout()
         self._setup_sidebar()
@@ -88,30 +97,27 @@ class MainWindow(ctk.CTk):
         # Select default view (Dashboard)
         self.switch_view("dashboard")
 
-        # Initial log
+        # Initial ready event
         lang = self.cfg.get("language", "en")
         self.log_event(t("log_app_ready", lang))
-
-        # Sample initial pixel for preview swatch
-        self.after(200, self._sample_initial_pixel)
 
     def _setup_layout(self) -> None:
         """Configures root 2-column grid layout."""
         self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=0, minsize=210)  # Left Sidebar
+        self.grid_columnconfigure(0, weight=0, minsize=200)  # Left Sidebar
         self.grid_columnconfigure(1, weight=1)               # Right Viewport
 
-        # Sidebar container
+        # Left Sidebar Container
         self.sidebar_frame = ctk.CTkFrame(
             self,
-            width=210,
+            width=200,
             corner_radius=0,
             fg_color=COLOR_SIDEBAR,
             border_width=0,
         )
         self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
 
-        # Content viewport container
+        # Right Content Viewport Container
         self.viewport_frame = ctk.CTkFrame(
             self,
             corner_radius=0,
@@ -126,93 +132,115 @@ class MainWindow(ctk.CTk):
         """Constructs left navigation sidebar with header, tabs, and persistent status footer."""
         lang = self.cfg.get("language", "en")
 
-        # 1. App Title / Logo
-        logo_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
-        logo_frame.pack(fill="x", padx=16, pady=(18, 20))
+        # 1. Brand Header
+        brand_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
+        brand_frame.pack(fill="x", padx=16, pady=(20, 24))
 
         title_label = ctk.CTkLabel(
-            logo_frame,
+            brand_frame,
             text="AikoArenaNotifier",
-            font=ctk.CTkFont(family="Segoe UI", size=17, weight="bold"),
+            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
             text_color=COLOR_TEXT_PRIMARY,
         )
         title_label.pack(anchor="w")
 
         version_label = ctk.CTkLabel(
-            logo_frame,
+            brand_frame,
             text=f"{t('app_version', lang)} • PvP Companion",
-            font=ctk.CTkFont(family="Segoe UI", size=11),
-            text_color=COLOR_ACCENT_PURPLE,
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            text_color=COLOR_ACCENT_BAR,
         )
-        version_label.pack(anchor="w")
+        version_label.pack(anchor="w", pady=(1, 0))
 
-        # 2. Navigation buttons
+        # 2. Navigation items
         nav_container = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
-        nav_container.pack(fill="x", padx=12, pady=0)
+        nav_container.pack(fill="x", padx=10, pady=0)
 
+        self.nav_item_frames: Dict[str, ctk.CTkFrame] = {}
+        self.nav_accent_bars: Dict[str, ctk.CTkFrame] = {}
         self.nav_buttons: Dict[str, ctk.CTkButton] = {}
 
         tabs = [
-            ("dashboard", "📊 " + t("tab_dashboard", lang)),
-            ("settings", "⚙️ " + t("tab_settings", lang)),
-            ("guide", "📖 " + t("tab_guide", lang)),
+            ("dashboard", "📊  " + t("tab_dashboard", lang)),
+            ("settings", "⚙️  " + t("tab_settings", lang)),
+            ("guide", "📖  " + t("tab_guide", lang)),
         ]
 
         for tab_id, tab_label in tabs:
-            btn = ctk.CTkButton(
+            item_frame = ctk.CTkFrame(
                 nav_container,
+                height=36,
+                corner_radius=6,
+                fg_color="transparent",
+            )
+            item_frame.pack(fill="x", pady=2)
+            item_frame.pack_propagate(False)
+
+            accent_bar = ctk.CTkFrame(
+                item_frame,
+                width=3,
+                corner_radius=2,
+                fg_color="transparent",
+            )
+            accent_bar.pack(side="left", fill="y", padx=(2, 6), pady=4)
+
+            btn = ctk.CTkButton(
+                item_frame,
                 text=tab_label,
                 anchor="w",
-                font=ctk.CTkFont(family="Segoe UI", size=13, weight="normal"),
+                font=ctk.CTkFont(family="Segoe UI", size=12, weight="normal"),
                 fg_color="transparent",
                 text_color=COLOR_TEXT_MUTED,
                 hover_color=COLOR_CARD,
-                height=38,
-                corner_radius=8,
+                height=36,
+                corner_radius=6,
                 command=lambda tid=tab_id: self.switch_view(tid),
             )
-            btn.pack(fill="x", pady=3)
+            btn.pack(side="left", fill="both", expand=True)
+
+            self.nav_item_frames[tab_id] = item_frame
+            self.nav_accent_bars[tab_id] = accent_bar
             self.nav_buttons[tab_id] = btn
 
-        # Spacer to push footer to bottom
+        # Spacer
         spacer = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
         spacer.pack(fill="both", expand=True)
 
         # 3. Persistent Status Indicator Footer
-        footer_frame = ctk.CTkFrame(
+        footer_card = ctk.CTkFrame(
             self.sidebar_frame,
             fg_color=COLOR_CARD,
-            corner_radius=10,
+            corner_radius=8,
             border_width=1,
             border_color=COLOR_CARD_BORDER,
         )
-        footer_frame.pack(fill="x", padx=12, pady=16)
+        footer_card.pack(fill="x", padx=12, pady=16)
 
-        status_row = ctk.CTkFrame(footer_frame, fg_color="transparent")
+        status_row = ctk.CTkFrame(footer_card, fg_color="transparent")
         status_row.pack(fill="x", padx=12, pady=(10, 4))
 
         self.lbl_status_dot = ctk.CTkLabel(
             status_row,
             text="●",
-            font=ctk.CTkFont(size=14, weight="bold"),
+            font=ctk.CTkFont(size=12, weight="bold"),
             text_color=COLOR_STATUS_IDLE,
-            width=16,
+            width=14,
         )
         self.lbl_status_dot.pack(side="left")
 
         self.lbl_status_text = ctk.CTkLabel(
             status_row,
             text=t("status_idle", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
-            text_color=COLOR_STATUS_IDLE,
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            text_color=COLOR_TEXT_MUTED,
         )
         self.lbl_status_text.pack(side="left", padx=4)
 
         self.lbl_footer_hotkey = ctk.CTkLabel(
-            footer_frame,
+            footer_card,
             text=f"{t('footer_hotkey_prefix', lang)} {self._current_hotkey}",
             font=ctk.CTkFont(family="Segoe UI", size=11),
-            text_color=COLOR_TEXT_MUTED,
+            text_color=COLOR_TEXT_DIM,
         )
         self.lbl_footer_hotkey.pack(anchor="w", padx=12, pady=(0, 10))
 
@@ -232,150 +260,128 @@ class MainWindow(ctk.CTk):
         view.grid_columnconfigure(0, weight=1)
         lang = self.cfg.get("language", "en")
 
-        # Hero Status Banner
+        # 1. Compact Status Banner Card
         self.hero_frame = ctk.CTkFrame(
             view,
             fg_color=COLOR_CARD,
-            corner_radius=10,
+            corner_radius=8,
             border_width=1,
             border_color=COLOR_CARD_BORDER,
         )
         self.hero_frame.grid(row=0, column=0, sticky="ew", pady=(0, 12))
 
         hero_inner = ctk.CTkFrame(self.hero_frame, fg_color="transparent")
-        hero_inner.pack(fill="x", padx=16, pady=12)
+        hero_inner.pack(fill="x", padx=16, pady=14)
+
+        title_row = ctk.CTkFrame(hero_inner, fg_color="transparent")
+        title_row.pack(fill="x")
+
+        self.lbl_hero_dot = ctk.CTkLabel(
+            title_row,
+            text="●",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=COLOR_STATUS_IDLE,
+            width=16,
+        )
+        self.lbl_hero_dot.pack(side="left")
 
         self.lbl_hero_title = ctk.CTkLabel(
-            hero_inner,
+            title_row,
             text=t("hero_idle_title", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
+            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
             text_color=COLOR_TEXT_PRIMARY,
         )
-        self.lbl_hero_title.pack(anchor="w")
+        self.lbl_hero_title.pack(side="left", padx=6)
 
         self.lbl_hero_subtitle = ctk.CTkLabel(
             hero_inner,
             text=t("hero_idle_subtitle", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=12),
+            font=ctk.CTkFont(family="Segoe UI", size=11),
             text_color=COLOR_TEXT_MUTED,
         )
-        self.lbl_hero_subtitle.pack(anchor="w", pady=(2, 0))
+        self.lbl_hero_subtitle.pack(anchor="w", padx=(22, 0), pady=(3, 0))
 
-        # Big Action Toggle Button
+        # 2. Sleek Action Toggle Button
         btn_text = t("btn_start_scan", lang, hotkey=self._current_hotkey)
         self.btn_toggle_scan = ctk.CTkButton(
             view,
             text=btn_text,
-            font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
-            fg_color=COLOR_SUCCESS_GREEN,
-            hover_color=COLOR_SUCCESS_HOVER,
-            text_color="#ffffff",
-            height=44,
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            fg_color=COLOR_ACCENT,
+            hover_color=COLOR_ACCENT_HOVER,
+            text_color="#FFFFFF",
+            height=42,
             corner_radius=8,
             command=self.toggle_scanning,
         )
         self.btn_toggle_scan.grid(row=1, column=0, sticky="ew", pady=(0, 12))
 
-        # Diagnostics Panel Card
-        diag_card = ctk.CTkFrame(
+        # 3. Clean Metadata Line (replacing raw debug RGB & swatch)
+        meta_card = ctk.CTkFrame(
             view,
-            fg_color=COLOR_CARD,
-            corner_radius=10,
+            fg_color=COLOR_SURFACE_ALT,
+            corner_radius=6,
             border_width=1,
             border_color=COLOR_CARD_BORDER,
         )
-        diag_card.grid(row=2, column=0, sticky="ew", pady=(0, 12))
+        meta_card.grid(row=2, column=0, sticky="ew", pady=(0, 12))
 
-        diag_inner = ctk.CTkFrame(diag_card, fg_color="transparent")
-        diag_inner.pack(fill="x", padx=16, pady=10)
+        meta_inner = ctk.CTkFrame(meta_card, fg_color="transparent")
+        meta_inner.pack(fill="x", padx=14, pady=8)
 
-        # Diag Left column: Monitor & Sample point
-        col_left = ctk.CTkFrame(diag_inner, fg_color="transparent")
-        col_left.pack(side="left", fill="both", expand=True)
-
-        current_mon = self._get_current_monitor_label()
-        self.lbl_diag_monitor = ctk.CTkLabel(
-            col_left,
-            text=f"{t('diag_monitor', lang)} {current_mon}",
-            font=ctk.CTkFont(family="Segoe UI", size=12),
-            text_color=COLOR_TEXT_PRIMARY,
-        )
-        self.lbl_diag_monitor.pack(anchor="w")
-
-        lbl_diag_coords = ctk.CTkLabel(
-            col_left,
-            text=t("diag_pixel", lang),
+        self.lbl_metadata = ctk.CTkLabel(
+            meta_inner,
+            text=self._get_metadata_summary_text(),
             font=ctk.CTkFont(family="Segoe UI", size=11),
             text_color=COLOR_TEXT_MUTED,
         )
-        lbl_diag_coords.pack(anchor="w", pady=(2, 0))
+        self.lbl_metadata.pack(anchor="w")
 
-        # Diag Right column: Live RGB & Swatch
-        col_right = ctk.CTkFrame(diag_inner, fg_color="transparent")
-        col_right.pack(side="right")
-
-        self.lbl_diag_rgb = ctk.CTkLabel(
-            col_right,
-            text=f"{t('diag_current_rgb', lang)} (0, 0, 0)",
-            font=ctk.CTkFont(family="Consolas", size=12, weight="bold"),
-            text_color=COLOR_TEXT_PRIMARY,
-        )
-        self.lbl_diag_rgb.pack(side="left", padx=(0, 10))
-
-        self.swatch_preview = ctk.CTkFrame(
-            col_right,
-            width=28,
-            height=28,
-            corner_radius=6,
-            fg_color="#000000",
-            border_width=1,
-            border_color="#444455",
-        )
-        self.swatch_preview.pack(side="left")
-
-        # Activity Log Card
-        log_card = ctk.CTkFrame(
+        # 4. Sleek "Recent Activity" Card (last 3-4 events)
+        activity_card = ctk.CTkFrame(
             view,
             fg_color=COLOR_CARD,
-            corner_radius=10,
+            corner_radius=8,
             border_width=1,
             border_color=COLOR_CARD_BORDER,
         )
-        log_card.grid(row=3, column=0, sticky="nsew")
+        activity_card.grid(row=3, column=0, sticky="nsew")
         view.grid_rowconfigure(3, weight=1)
 
-        log_header = ctk.CTkFrame(log_card, fg_color="transparent")
-        log_header.pack(fill="x", padx=14, pady=(8, 4))
+        act_header = ctk.CTkFrame(activity_card, fg_color="transparent")
+        act_header.pack(fill="x", padx=14, pady=(10, 4))
 
-        lbl_log_title = ctk.CTkLabel(
-            log_header,
-            text=t("log_title", lang),
+        lbl_act_title = ctk.CTkLabel(
+            act_header,
+            text=t("recent_activity_title", lang),
             font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
             text_color=COLOR_TEXT_PRIMARY,
         )
-        lbl_log_title.pack(side="left")
+        lbl_act_title.pack(side="left")
 
-        btn_clear_log = ctk.CTkButton(
-            log_header,
+        btn_clear = ctk.CTkButton(
+            act_header,
             text=t("btn_clear_log", lang),
             font=ctk.CTkFont(family="Segoe UI", size=11),
             fg_color="transparent",
-            text_color=COLOR_TEXT_MUTED,
+            text_color=COLOR_TEXT_DIM,
             hover_color=COLOR_CARD_BORDER,
-            height=24,
-            width=70,
-            corner_radius=5,
+            height=22,
+            width=50,
+            corner_radius=4,
             command=self.clear_log,
         )
-        btn_clear_log.pack(side="right")
+        btn_clear.pack(side="right")
 
+        # Compact activity display box
         self.log_textbox = ctk.CTkTextbox(
-            log_card,
-            fg_color="#121219",
+            activity_card,
+            fg_color=COLOR_SURFACE_ALT,
             text_color=COLOR_TEXT_PRIMARY,
             font=ctk.CTkFont(family="Consolas", size=11),
             corner_radius=6,
-            activate_scrollbars=True,
+            activate_scrollbars=False,
+            border_width=0,
         )
         self.log_textbox.pack(fill="both", expand=True, padx=12, pady=(0, 10))
         self.log_textbox.configure(state="disabled")
@@ -383,14 +389,10 @@ class MainWindow(ctk.CTk):
         return view
 
     # =========================================================================
-    # VIEW 2: SETTINGS
+    # VIEW 2: SETTINGS (SCROLLBAR-FREE)
     # =========================================================================
     def _create_settings_view(self) -> ctk.CTkFrame:
-        view = ctk.CTkScrollableFrame(
-            self.viewport_frame,
-            fg_color="transparent",
-            corner_radius=0,
-        )
+        view = ctk.CTkFrame(self.viewport_frame, fg_color="transparent")
         view.grid_columnconfigure(0, weight=1)
         lang = self.cfg.get("language", "en")
 
@@ -398,34 +400,37 @@ class MainWindow(ctk.CTk):
         card = ctk.CTkFrame(
             view,
             fg_color=COLOR_CARD,
-            corner_radius=10,
+            corner_radius=8,
             border_width=1,
             border_color=COLOR_CARD_BORDER,
         )
-        card.pack(fill="both", expand=True, padx=2, pady=2)
+        card.pack(fill="both", expand=True, padx=0, pady=0)
 
         inner = ctk.CTkFrame(card, fg_color="transparent")
-        inner.pack(fill="both", expand=True, padx=18, pady=16)
+        inner.pack(fill="both", expand=True, padx=16, pady=12)
 
         # 1. Telegram Bot Token
         lbl_token = ctk.CTkLabel(
             inner,
             text=t("settings_tg_token_label", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
             text_color=COLOR_TEXT_PRIMARY,
         )
         lbl_token.pack(anchor="w")
 
         token_row = ctk.CTkFrame(inner, fg_color="transparent")
-        token_row.pack(fill="x", pady=(4, 12))
+        token_row.pack(fill="x", pady=(2, 8))
 
         self.entry_token = ctk.CTkEntry(
             token_row,
             show="*",
             placeholder_text=t("settings_tg_token_placeholder", lang),
-            font=ctk.CTkFont(family="Consolas", size=12),
-            height=34,
+            font=ctk.CTkFont(family="Consolas", size=11),
+            height=32,
             corner_radius=6,
+            fg_color=COLOR_SURFACE_ALT,
+            border_color=COLOR_INPUT_BORDER,
+            border_width=1,
         )
         self.entry_token.pack(side="left", fill="x", expand=True)
         if self.cfg.get("telegram_bot_token"):
@@ -435,11 +440,11 @@ class MainWindow(ctk.CTk):
         self.btn_toggle_token = ctk.CTkButton(
             token_row,
             text="👁️",
-            width=36,
-            height=34,
+            width=34,
+            height=32,
             corner_radius=6,
-            fg_color=COLOR_CARD_BORDER,
-            hover_color="#3c3c52",
+            fg_color=COLOR_NAV_ACTIVE,
+            hover_color=COLOR_CARD_BORDER,
             command=self._toggle_token_visibility,
         )
         self.btn_toggle_token.pack(side="left", padx=(6, 0))
@@ -448,7 +453,7 @@ class MainWindow(ctk.CTk):
         lbl_chat_id = ctk.CTkLabel(
             inner,
             text=t("settings_tg_chat_id_label", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
             text_color=COLOR_TEXT_PRIMARY,
         )
         lbl_chat_id.pack(anchor="w")
@@ -456,19 +461,22 @@ class MainWindow(ctk.CTk):
         self.entry_chat_id = ctk.CTkEntry(
             inner,
             placeholder_text=t("settings_tg_chat_id_placeholder", lang),
-            font=ctk.CTkFont(family="Consolas", size=12),
-            height=34,
+            font=ctk.CTkFont(family="Consolas", size=11),
+            height=32,
             corner_radius=6,
+            fg_color=COLOR_SURFACE_ALT,
+            border_color=COLOR_INPUT_BORDER,
+            border_width=1,
         )
-        self.entry_chat_id.pack(fill="x", pady=(4, 12))
+        self.entry_chat_id.pack(fill="x", pady=(2, 8))
         if self.cfg.get("telegram_chat_id"):
             self.entry_chat_id.insert(0, str(self.cfg["telegram_chat_id"]))
 
-        # 3. Target Display Selector
+        # 3. Target Game Display Selector
         lbl_display = ctk.CTkLabel(
             inner,
             text=t("settings_display_label", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
             text_color=COLOR_TEXT_PRIMARY,
         )
         lbl_display.pack(anchor="w")
@@ -484,21 +492,21 @@ class MainWindow(ctk.CTk):
         self.opt_display = ctk.CTkOptionMenu(
             inner,
             values=monitor_labels,
-            font=ctk.CTkFont(family="Segoe UI", size=12),
-            height=34,
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            height=32,
             corner_radius=6,
-            fg_color=COLOR_CARD_BORDER,
-            button_color="#3c3c52",
-            button_hover_color=COLOR_ACCENT_PURPLE,
+            fg_color=COLOR_SURFACE_ALT,
+            button_color=COLOR_NAV_ACTIVE,
+            button_hover_color=COLOR_ACCENT,
         )
         self.opt_display.set(default_mon_label)
-        self.opt_display.pack(fill="x", pady=(4, 12))
+        self.opt_display.pack(fill="x", pady=(2, 8))
 
         # 4. Hotkey Selector
         lbl_hotkey = ctk.CTkLabel(
             inner,
             text=t("settings_hotkey_label", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
             text_color=COLOR_TEXT_PRIMARY,
         )
         lbl_hotkey.pack(anchor="w")
@@ -511,42 +519,43 @@ class MainWindow(ctk.CTk):
         self.opt_hotkey = ctk.CTkOptionMenu(
             inner,
             values=hotkey_options,
-            font=ctk.CTkFont(family="Segoe UI", size=12),
-            height=34,
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            height=32,
             corner_radius=6,
-            fg_color=COLOR_CARD_BORDER,
-            button_color="#3c3c52",
-            button_hover_color=COLOR_ACCENT_PURPLE,
+            fg_color=COLOR_SURFACE_ALT,
+            button_color=COLOR_NAV_ACTIVE,
+            button_hover_color=COLOR_ACCENT,
         )
         self.opt_hotkey.set(current_hk)
-        self.opt_hotkey.pack(fill="x", pady=(4, 14))
+        self.opt_hotkey.pack(fill="x", pady=(2, 10))
 
-        # 5. Sound Checkbox
+        # 5. Audio Alert Checkbox
         self.chk_sound = ctk.CTkCheckBox(
             inner,
             text=t("settings_sound_label", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=12),
+            font=ctk.CTkFont(family="Segoe UI", size=11),
             text_color=COLOR_TEXT_PRIMARY,
-            fg_color=COLOR_ACCENT_PURPLE,
+            fg_color=COLOR_ACCENT,
             hover_color=COLOR_ACCENT_HOVER,
+            corner_radius=4,
         )
         if self.cfg.get("sound_enabled", True):
             self.chk_sound.select()
         else:
             self.chk_sound.deselect()
-        self.chk_sound.pack(anchor="w", pady=(0, 16))
+        self.chk_sound.pack(anchor="w", pady=(0, 14))
 
-        # 6. Action Buttons & Feedback Status
+        # 6. Harmonious Bottom Action Row
         btn_row = ctk.CTkFrame(inner, fg_color="transparent")
-        btn_row.pack(fill="x", pady=(0, 8))
+        btn_row.pack(fill="x", pady=(0, 6))
 
         self.btn_test_tg = ctk.CTkButton(
             btn_row,
             text="🔔 " + t("settings_test_tg_btn", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
-            fg_color=COLOR_CARD_BORDER,
-            hover_color="#3c3c52",
-            height=36,
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            fg_color=COLOR_NAV_ACTIVE,
+            hover_color="#2F374A",
+            height=34,
             corner_radius=6,
             command=self._on_test_telegram,
         )
@@ -555,23 +564,28 @@ class MainWindow(ctk.CTk):
         self.btn_save_settings = ctk.CTkButton(
             btn_row,
             text="💾 " + t("settings_save_btn", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
-            fg_color=COLOR_ACCENT_PURPLE,
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            fg_color=COLOR_ACCENT,
             hover_color=COLOR_ACCENT_HOVER,
-            height=36,
+            height=34,
             corner_radius=6,
             command=self._on_save_settings,
         )
         self.btn_save_settings.pack(side="left", fill="x", expand=True, padx=(6, 0))
 
-        # Inline Feedback Status Label
+        # Fixed-height Status Feedback (Never shifts layout elements)
+        feedback_container = ctk.CTkFrame(inner, height=20, fg_color="transparent")
+        feedback_container.pack(fill="x", pady=(2, 0))
+        feedback_container.pack_propagate(False)
+
         self.lbl_settings_status = ctk.CTkLabel(
-            inner,
+            feedback_container,
             text="",
             font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
-            text_color=COLOR_TEXT_MUTED,
+            text_color=COLOR_TEXT_DIM,
+            anchor="w",
         )
-        self.lbl_settings_status.pack(anchor="w", pady=(4, 0))
+        self.lbl_settings_status.pack(fill="both", expand=True)
 
         return view
 
@@ -584,32 +598,32 @@ class MainWindow(ctk.CTk):
         view.grid_rowconfigure(1, weight=1)
         lang = self.cfg.get("language", "en")
 
-        # Top Bar: Title & Language Selector
+        # Top Bar: Title & Integrated Language Selector
         top_bar = ctk.CTkFrame(view, fg_color="transparent")
         top_bar.grid(row=0, column=0, sticky="ew", pady=(0, 10))
 
         lbl_guide_title = ctk.CTkLabel(
             top_bar,
             text=t("guide_title", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
+            font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
             text_color=COLOR_TEXT_PRIMARY,
         )
         lbl_guide_title.pack(side="left")
 
-        # Language Selector Segmented Button
         current_lang_str = "Русский" if lang == "ru" else "English"
         self.seg_lang = ctk.CTkSegmentedButton(
             top_bar,
             values=["English", "Русский"],
             font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
-            selected_color=COLOR_ACCENT_PURPLE,
+            fg_color=COLOR_SURFACE_ALT,
+            selected_color=COLOR_ACCENT,
             selected_hover_color=COLOR_ACCENT_HOVER,
             command=self._on_language_change,
         )
         self.seg_lang.set(current_lang_str)
         self.seg_lang.pack(side="right")
 
-        # Scrollable Steps Container
+        # Scrollable Step Cards
         scroll_steps = ctk.CTkScrollableFrame(
             view,
             fg_color="transparent",
@@ -635,7 +649,7 @@ class MainWindow(ctk.CTk):
                 border_width=1,
                 border_color=COLOR_CARD_BORDER,
             )
-            step_card.pack(fill="x", pady=6)
+            step_card.pack(fill="x", pady=5)
 
             card_inner = ctk.CTkFrame(step_card, fg_color="transparent")
             card_inner.pack(fill="x", padx=14, pady=10)
@@ -643,8 +657,8 @@ class MainWindow(ctk.CTk):
             title_lbl = ctk.CTkLabel(
                 card_inner,
                 text=t(title_key, lang),
-                font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
-                text_color=COLOR_ACCENT_PURPLE,
+                font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+                text_color=COLOR_ACCENT_BAR,
             )
             title_lbl.pack(anchor="w")
 
@@ -654,9 +668,9 @@ class MainWindow(ctk.CTk):
                 font=ctk.CTkFont(family="Segoe UI", size=11),
                 text_color=COLOR_TEXT_PRIMARY,
                 justify="left",
-                wraplength=480,
+                wraplength=490,
             )
-            body_lbl.pack(anchor="w", pady=(4, 0))
+            body_lbl.pack(anchor="w", pady=(3, 0))
 
             self.guide_step_labels.append((title_lbl, body_lbl))
 
@@ -666,21 +680,25 @@ class MainWindow(ctk.CTk):
     # SPA NAVIGATION CONTROLLER
     # =========================================================================
     def switch_view(self, target_view: str) -> None:
-        """Hides current view and shows selected target view."""
+        """Hides current view and shows selected target view with active indicator."""
         for name, frame in self.views.items():
             if name == target_view:
                 frame.grid(row=0, column=0, sticky="nsew")
-                # Highlight active button
+                # Highlight active navigation item with solid fill and 3px left bar
+                self.nav_item_frames[name].configure(fg_color=COLOR_NAV_ACTIVE)
+                self.nav_accent_bars[name].configure(fg_color=COLOR_ACCENT_BAR)
                 self.nav_buttons[name].configure(
-                    fg_color=COLOR_CARD,
                     text_color=COLOR_TEXT_PRIMARY,
+                    font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
                 )
             else:
                 frame.grid_forget()
-                # De-highlight inactive buttons
+                # De-highlight inactive items
+                self.nav_item_frames[name].configure(fg_color="transparent")
+                self.nav_accent_bars[name].configure(fg_color="transparent")
                 self.nav_buttons[name].configure(
-                    fg_color="transparent",
                     text_color=COLOR_TEXT_MUTED,
+                    font=ctk.CTkFont(family="Segoe UI", size=12, weight="normal"),
                 )
 
     # =========================================================================
@@ -710,59 +728,56 @@ class MainWindow(ctk.CTk):
         self.log_event(t("log_scanner_stopped", lang))
 
     def _update_ui_state(self, is_scanning: bool) -> None:
-        """Updates hero banners, buttons, and status indicator footer."""
+        """Updates compact hero banner, button styling, and sidebar status footer."""
         lang = self.cfg.get("language", "en")
 
         if is_scanning:
-            # Running state
-            self.lbl_status_dot.configure(text_color=COLOR_STATUS_SCANNING)
+            # Active Scanning state
+            self.lbl_status_dot.configure(text_color=COLOR_STATUS_ACTIVE)
             self.lbl_status_text.configure(
                 text=t("status_scanning", lang),
-                text_color=COLOR_STATUS_SCANNING,
+                text_color=COLOR_STATUS_ACTIVE,
             )
+            self.lbl_hero_dot.configure(text_color=COLOR_STATUS_ACTIVE)
             self.lbl_hero_title.configure(text=t("hero_scanning_title", lang))
             self.lbl_hero_subtitle.configure(text=t("hero_scanning_subtitle", lang))
             self.btn_toggle_scan.configure(
                 text=t("btn_stop_scan", lang, hotkey=self._current_hotkey),
-                fg_color=COLOR_DANGER_RED,
+                fg_color=COLOR_DANGER,
                 hover_color=COLOR_DANGER_HOVER,
             )
         else:
-            # Idle state
+            # Idle Paused state
             self.lbl_status_dot.configure(text_color=COLOR_STATUS_IDLE)
             self.lbl_status_text.configure(
                 text=t("status_idle", lang),
-                text_color=COLOR_STATUS_IDLE,
+                text_color=COLOR_TEXT_MUTED,
             )
+            self.lbl_hero_dot.configure(text_color=COLOR_STATUS_IDLE)
             self.lbl_hero_title.configure(text=t("hero_idle_title", lang))
             self.lbl_hero_subtitle.configure(text=t("hero_idle_subtitle", lang))
             self.btn_toggle_scan.configure(
                 text=t("btn_start_scan", lang, hotkey=self._current_hotkey),
-                fg_color=COLOR_SUCCESS_GREEN,
-                hover_color=COLOR_SUCCESS_HOVER,
+                fg_color=COLOR_ACCENT,
+                hover_color=COLOR_ACCENT_HOVER,
             )
 
+        # Update metadata line
+        self.lbl_metadata.configure(text=self._get_metadata_summary_text())
+
     def _on_scanner_tick(self, rgb: Tuple[int, int, int]) -> None:
-        """Receives live sampled RGB from background thread; marshals to GUI thread."""
-        self.after(0, self._update_diagnostics_swatch, rgb)
+        """Background tick hook (no debug clutter in production view)."""
+        pass
 
     def _on_scanner_pop(self) -> None:
         """Invoked when pop marker is detected. Marshals to GUI thread for alerts."""
         self.after(0, self._handle_queue_pop)
 
-    def _update_diagnostics_swatch(self, rgb: Tuple[int, int, int]) -> None:
-        """Updates live RGB label and color swatch preview."""
-        r, g, b = rgb
-        lang = self.cfg.get("language", "en")
-        self.lbl_diag_rgb.configure(text=f"{t('diag_current_rgb', lang)} ({r}, {g}, {b})")
-        hex_color = f"#{r:02x}{g:02x}{b:02x}"
-        self.swatch_preview.configure(fg_color=hex_color)
-
     def _handle_queue_pop(self) -> None:
         """Handles queue pop event: audio alert, Telegram dispatch, and logging."""
         lang = self.cfg.get("language", "en")
 
-        # 1. Update UI state (scanner has already set is_scanning = False)
+        # 1. Update UI state (scanner auto-stops)
         self._update_ui_state(is_scanning=False)
         self.log_event(t("log_pop_detected", lang))
         self.log_event(t("log_auto_stopped", lang))
@@ -772,7 +787,7 @@ class MainWindow(ctk.CTk):
             self.sound_notifier.play_pop_sound(enabled=True)
             self.log_event(t("log_sound_played", lang))
 
-        # 3. Telegram push notification (asynchronous background worker)
+        # 3. Telegram push notification (daemon thread)
         token = self.cfg.get("telegram_bot_token", "").strip()
         chat_id = self.cfg.get("telegram_chat_id", "").strip()
 
@@ -814,20 +829,20 @@ class MainWindow(ctk.CTk):
         if not token:
             self.lbl_settings_status.configure(
                 text=t("status_token_empty", lang),
-                text_color=COLOR_DANGER_RED,
+                text_color=COLOR_DANGER,
             )
             return
 
         if not chat_id:
             self.lbl_settings_status.configure(
                 text=t("status_chat_id_empty", lang),
-                text_color=COLOR_DANGER_RED,
+                text_color=COLOR_DANGER,
             )
             return
 
         self.lbl_settings_status.configure(
             text=t("status_testing_connection", lang),
-            text_color=COLOR_ACCENT_PURPLE,
+            text_color=COLOR_ACCENT_BAR,
         )
         self.btn_test_tg.configure(state="disabled")
 
@@ -845,12 +860,12 @@ class MainWindow(ctk.CTk):
         if ok:
             self.lbl_settings_status.configure(
                 text=f"{t('status_test_success', lang)} ({msg})",
-                text_color=COLOR_SUCCESS_GREEN,
+                text_color=COLOR_STATUS_ACTIVE,
             )
         else:
             self.lbl_settings_status.configure(
                 text=t("status_test_failed", lang, error=msg),
-                text_color=COLOR_DANGER_RED,
+                text_color=COLOR_DANGER,
             )
 
     def _on_save_settings(self) -> None:
@@ -861,7 +876,6 @@ class MainWindow(ctk.CTk):
         new_hotkey = self.opt_hotkey.get().strip()
         new_sound = bool(self.chk_sound.get())
 
-        # Resolve selected display index
         selected_label = self.opt_display.get()
         selected_idx = 0
         for idx, m in enumerate(self.monitors):
@@ -882,14 +896,9 @@ class MainWindow(ctk.CTk):
             self.cfg = self.config_manager.load_config()
             self.scanner.display_index = selected_idx
 
-            # Update hotkey binding if changed
             if new_hotkey != self._current_hotkey:
                 self._register_global_hotkey(new_hotkey)
 
-            # Update UI labels
-            self.lbl_diag_monitor.configure(
-                text=f"{t('diag_monitor', lang)} {self._get_current_monitor_label()}"
-            )
             self.lbl_footer_hotkey.configure(
                 text=f"{t('footer_hotkey_prefix', lang)} {self._current_hotkey}"
             )
@@ -897,13 +906,13 @@ class MainWindow(ctk.CTk):
 
             self.lbl_settings_status.configure(
                 text=t("status_saved_success", lang),
-                text_color=COLOR_SUCCESS_GREEN,
+                text_color=COLOR_STATUS_ACTIVE,
             )
             self.log_event(t("log_settings_saved", lang))
         else:
             self.lbl_settings_status.configure(
                 text=t("status_saved_failed", lang),
-                text_color=COLOR_DANGER_RED,
+                text_color=COLOR_DANGER,
             )
 
     # =========================================================================
@@ -915,7 +924,6 @@ class MainWindow(ctk.CTk):
         self.cfg["language"] = new_lang
         self.config_manager.save_config({"language": new_lang})
 
-        # Update guide card text
         steps = [
             ("guide_step1_title", "guide_step1_body"),
             ("guide_step2_title", "guide_step2_body"),
@@ -927,22 +935,18 @@ class MainWindow(ctk.CTk):
             t_lbl.configure(text=t(title_k, new_lang))
             b_lbl.configure(text=t(body_k, new_lang))
 
-        # Refresh all static labels in other views
         self._refresh_translations(new_lang)
 
     def _refresh_translations(self, lang: str) -> None:
         """Refreshes dynamic localized strings across tabs and footers."""
-        self.nav_buttons["dashboard"].configure(text="📊 " + t("tab_dashboard", lang))
-        self.nav_buttons["settings"].configure(text="⚙️ " + t("tab_settings", lang))
-        self.nav_buttons["guide"].configure(text="📖 " + t("tab_guide", lang))
+        self.nav_buttons["dashboard"].configure(text="📊  " + t("tab_dashboard", lang))
+        self.nav_buttons["settings"].configure(text="⚙️  " + t("tab_settings", lang))
+        self.nav_buttons["guide"].configure(text="📖  " + t("tab_guide", lang))
 
         self.lbl_footer_hotkey.configure(
             text=f"{t('footer_hotkey_prefix', lang)} {self._current_hotkey}"
         )
-        self.lbl_diag_monitor.configure(
-            text=f"{t('diag_monitor', lang)} {self._get_current_monitor_label()}"
-        )
-
+        self.lbl_metadata.configure(text=self._get_metadata_summary_text())
         self._update_ui_state(is_scanning=self.scanner.is_scanning)
 
     # =========================================================================
@@ -954,7 +958,6 @@ class MainWindow(ctk.CTk):
         try:
             import keyboard
 
-            # Clean previous hook
             if self._hotkey_hook:
                 try:
                     keyboard.remove_hotkey(self._hotkey_hook)
@@ -974,33 +977,48 @@ class MainWindow(ctk.CTk):
     # =========================================================================
     # HELPERS
     # =========================================================================
-    def _sample_initial_pixel(self) -> None:
-        """Performs initial sample to populate swatch."""
-        try:
-            rgb = self.scanner.sample_current_pixel()
-            self._update_diagnostics_swatch(rgb)
-        except Exception:
-            pass
-
     def _get_current_monitor_label(self) -> str:
-        """Returns readable label for currently selected monitor."""
+        """Returns clean display name with resolution."""
         idx = self.scanner.display_index
         if 0 <= idx < len(self.monitors):
-            return self.monitors[idx]["name"]
+            return self.monitors[idx]["label"]
         return "Display 1"
 
-    def log_event(self, message: str) -> None:
-        """Appends timestamped message to the activity log textbox."""
-        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-        entry = f"[{timestamp}] {message}\n"
+    def _get_metadata_summary_text(self) -> str:
+        """Constructs clean single-line metadata summary."""
+        lang = self.cfg.get("language", "en")
+        display_str = self._get_current_monitor_label()
+        audio_str = (
+            t("audio_enabled", lang)
+            if self.cfg.get("sound_enabled", True)
+            else t("audio_disabled", lang)
+        )
+        return t(
+            "metadata_summary",
+            lang,
+            display=display_str,
+            hotkey=self._current_hotkey,
+            audio=audio_str,
+        )
 
+    def log_event(self, message: str) -> None:
+        """Appends timestamped message to recent events (retaining last 5)."""
+        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+        entry = f"[{timestamp}] {message}"
+        self._recent_events.append(entry)
+        if len(self._recent_events) > 5:
+            self._recent_events = self._recent_events[-5:]
+
+        # Refresh textbox with clean rows
         self.log_textbox.configure(state="normal")
-        self.log_textbox.insert("end", entry)
+        self.log_textbox.delete("1.0", "end")
+        self.log_textbox.insert("end", "\n".join(self._recent_events) + "\n")
         self.log_textbox.see("end")
         self.log_textbox.configure(state="disabled")
 
     def clear_log(self) -> None:
-        """Clears activity log textbox."""
+        """Clears recent activity history."""
+        self._recent_events.clear()
         self.log_textbox.configure(state="normal")
         self.log_textbox.delete("1.0", "end")
         self.log_textbox.configure(state="disabled")

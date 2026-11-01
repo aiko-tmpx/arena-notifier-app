@@ -22,21 +22,26 @@ LOCALIZATION: Dict[str, Dict[str, str]] = {
         "footer_hotkey_prefix": "Hotkey:",
         
         # Dashboard Hero
-        "hero_idle_title": "Scanner is Idle",
-        "hero_idle_subtitle": "Press START or hit hotkey to begin monitoring for arena queue pops.",
+        "hero_idle_title": "Scanner Paused",
+        "hero_idle_subtitle": "Standing by for arena queue pop marker at screen (0, 0).",
         "hero_scanning_title": "Active Monitoring",
-        "hero_scanning_subtitle": "Watching top-left screen pixel for companion addon pop marker.",
+        "hero_scanning_subtitle": "Monitoring display presentation buffer for WoW queue pop marker.",
         
         # Dashboard Buttons & Diagnostics
-        "btn_start_scan": "START SCANNING ({hotkey})",
-        "btn_stop_scan": "STOP SCANNING ({hotkey})",
+        "btn_start_scan": "Start Monitoring ({hotkey})",
+        "btn_stop_scan": "Stop Monitoring ({hotkey})",
         "diag_title": "Live Diagnostics",
         "diag_monitor": "Target Display:",
         "diag_pixel": "Sample Point: (X: 2, Y: 2)",
         "diag_current_rgb": "Current Read RGB:",
         "diag_swatch_label": "Live Color Preview",
-        "log_title": "Activity Log",
-        "btn_clear_log": "Clear Log",
+        "metadata_summary": "Display: {display}  •  Hotkey: {hotkey}  •  Audio: {audio}",
+        "audio_enabled": "Enabled",
+        "audio_disabled": "Disabled",
+        "log_title": "Recent Activity",
+        "recent_activity_title": "Recent Activity",
+        "no_recent_activity": "No recent events recorded.",
+        "btn_clear_log": "Clear",
         
         # Dashboard Logs
         "log_app_ready": "AikoArenaNotifier initialized and ready.",
@@ -128,21 +133,26 @@ LOCALIZATION: Dict[str, Dict[str, str]] = {
         "footer_hotkey_prefix": "Горячая клавиша:",
         
         # Dashboard Hero
-        "hero_idle_title": "Сканер не активен",
-        "hero_idle_subtitle": "Нажмите СТАРТ или горячую клавишу для начала отслеживания очереди арены.",
+        "hero_idle_title": "Сканер на паузе",
+        "hero_idle_subtitle": "Ожидание появления индикатора очереди арены в координатах (0, 0).",
         "hero_scanning_title": "Активный мониторинг",
-        "hero_scanning_subtitle": "Отслеживание пикселя в верхнем левом углу экрана от WoW аддона.",
+        "hero_scanning_subtitle": "Мониторинг буфера экрана для фиксации метки аддона WoW.",
         
         # Dashboard Buttons & Diagnostics
-        "btn_start_scan": "НАЧАТЬ СКАНИРОВАНИЕ ({hotkey})",
-        "btn_stop_scan": "ОСТАНОВИТЬ СКАНИРОВАНИЕ ({hotkey})",
+        "btn_start_scan": "Начать мониторинг ({hotkey})",
+        "btn_stop_scan": "Остановить мониторинг ({hotkey})",
         "diag_title": "Диагностика в реальном времени",
         "diag_monitor": "Игровой монитор:",
         "diag_pixel": "Точка замера: (X: 2, Y: 2)",
         "diag_current_rgb": "Текущий RGB:",
         "diag_swatch_label": "Цвет пикселя",
-        "log_title": "Журнал событий",
-        "btn_clear_log": "Очистить лог",
+        "metadata_summary": "Дисплей: {display}  •  Клавиша: {hotkey}  •  Звук: {audio}",
+        "audio_enabled": "Вкл",
+        "audio_disabled": "Выкл",
+        "log_title": "История событий",
+        "recent_activity_title": "История событий",
+        "no_recent_activity": "Нет недавних событий.",
+        "btn_clear_log": "Очистить",
         
         # Dashboard Logs
         "log_app_ready": "AikoArenaNotifier инициализирован и готов к работе.",
