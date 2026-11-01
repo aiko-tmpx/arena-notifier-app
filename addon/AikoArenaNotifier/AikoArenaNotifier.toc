@@ -1,8 +1,0 @@
-## Interface: 110007, 110005, 100207, 40401, 11503
-## Title: |cffFF00FFAiko|r Arena Notifier
-## Notes: Companion addon for AikoArenaNotifier desktop application. Displays a 5x5 magenta square at top-left (0, 0) on arena/battleground queue pop.
-## Author: Aiko
-## Version: 1.0.0
-## DefaultState: Enabled
-
-AikoArenaNotifier.lua
