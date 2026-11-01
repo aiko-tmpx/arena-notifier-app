@@ -9,6 +9,9 @@ def test_is_magenta_pop_true():
     assert is_magenta_pop(235, 10, 240) is True
     assert is_magenta_pop(250, 19, 250) is True
     assert is_magenta_pop(245, 0, 254) is True
+    # Companion addon purple #A330C9 (RGB: 163, 48, 201)
+    assert is_magenta_pop(163, 48, 201) is True
+    assert is_magenta_pop(160, 45, 205) is True
 
 
 def test_is_magenta_pop_false():

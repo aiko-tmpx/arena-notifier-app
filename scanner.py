@@ -62,13 +62,24 @@ def enable_dpi_awareness() -> bool:
             return False
 
 
-def is_magenta_pop(r: int, g: int, b: int) -> bool:
-    """Checks whether the sampled RGB matches the WoW companion addon's magenta square.
-    
-    Target is #FF00FF (255, 0, 255). We use an asymmetric threshold check:
-    R > 230, G < 20, B > 230 to tolerate slight color profile / HDR differences.
-    """
+def is_addon_purple(r: int, g: int, b: int, tolerance: int = 30) -> bool:
+    """Matches the companion WoW addon's #A330C9 (RGB: 163, 48, 201)."""
+    return abs(r - 163) <= tolerance and abs(g - 48) <= tolerance and abs(b - 201) <= tolerance
+
+
+def is_pure_magenta(r: int, g: int, b: int) -> bool:
+    """Matches pure magenta #FF00FF (RGB: 255, 0, 255) with tolerance."""
     return r > 230 and g < 20 and b > 230
+
+
+def is_magenta_pop(r: int, g: int, b: int) -> bool:
+    """Checks whether the sampled RGB matches the WoW companion addon's pop marker.
+    
+    Supports both:
+    1. The companion addon's #A330C9 (RGB: 163, 48, 201)
+    2. Pure magenta #FF00FF (RGB: 255, 0, 255) with R > 230, G < 20, B > 230
+    """
+    return is_addon_purple(r, g, b) or is_pure_magenta(r, g, b)
 
 
 def calculate_target_coords(

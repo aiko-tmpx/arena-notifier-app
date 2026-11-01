@@ -95,13 +95,13 @@ LOCALIZATION: Dict[str, Dict[str, str]] = {
             "4. Click 'Test Telegram Connection' to verify you receive the test alert."
         ),
         
-        "guide_step3_title": "Step 3: Install the Companion WoW Addon",
+        "guide_step3_title": "Step 3: WoW Companion Addon",
         "guide_step3_body": (
-            "1. Copy the 'addon/AikoArenaNotifier' folder into your WoW AddOns directory:\n"
+            "1. The companion addon is located in your World of Warcraft AddOns directory:\n"
             "   World of Warcraft\\_retail_\\Interface\\AddOns\\AikoArenaNotifier\n"
-            "2. When an arena or Solo Shuffle queue pops, the addon renders a 5x5 magenta square (#FF00FF) at (0, 0).\n"
-            "3. You can test the square in-game at any time with the slash command:\n"
-            "   /aiko test\n"
+            "2. When an arena, Solo Shuffle, or Battleground queue pops, the addon renders a 5x5 purple square at (0, 0).\n"
+            "3. You can test the marker in-game at any time with the slash command:\n"
+            "   /aan test\n"
             "4. Ensure your game is running on the monitor selected in the Settings tab."
         ),
         
@@ -201,13 +201,13 @@ LOCALIZATION: Dict[str, Dict[str, str]] = {
             "4. Нажмите 'Проверить подключение Telegram', чтобы убедиться в доставке уведомления."
         ),
         
-        "guide_step3_title": "Шаг 3: Установка аддона для World of Warcraft",
+        "guide_step3_title": "Шаг 3: Аддон для World of Warcraft",
         "guide_step3_body": (
-            "1. Скопируйте папку 'addon/AikoArenaNotifier' в директорию аддонов WoW:\n"
+            "1. Аддон AikoArenaNotifier находится в директории аддонов WoW:\n"
             "   World of Warcraft\\_retail_\\Interface\\AddOns\\AikoArenaNotifier\n"
-            "2. При появлении подтверждения очереди аддон рисует пурпурный квадрат 5x5 (#FF00FF) в координатах (0, 0).\n"
+            "2. При появлении подтверждения очереди аддон рисует квадрат 5x5 в верхнем левом углу (0, 0).\n"
             "3. Вы можете проверить отображение квадрата в игре в любой момент командой:\n"
-            "   /aiko test\n"
+            "   /aan test\n"
             "4. Убедитесь, что в Настройках выбран тот монитор, на котором запущена игра."
         ),
         
