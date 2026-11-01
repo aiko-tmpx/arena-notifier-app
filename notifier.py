@@ -21,41 +21,17 @@ logger = logging.getLogger("AikoArenaNotifier.Notifier")
 
 
 def format_queue_pop_message(lang: str = "en") -> str:
-    """Formats Markdown message for the Telegram arena queue pop notification."""
-    now_str = datetime.datetime.now().strftime("%H:%M:%S")
-
+    """Formats ultra-concise message for the Telegram arena queue pop notification."""
     if lang == "ru":
-        return (
-            "🚨 *НАЙДЕНА ОЧЕРЕДЬ НА АРЕНУ!* 🚨\n\n"
-            "⚔️ Ваша очередь на Арену / Solo Shuffle готова!\n"
-            "⏱️ *Действие:* Нажмите «Вступить в бой» до истечения таймера.\n"
-            f"🕒 *Время фиксации:* `{now_str}`"
-        )
-
-    return (
-        "🚨 *ARENA QUEUE POPPED!* 🚨\n\n"
-        "⚔️ Your World of Warcraft Arena / Solo Shuffle queue is ready!\n"
-        "⏱️ *Action required:* Enter battle now before the timer expires.\n"
-        f"🕒 *Detected at:* `{now_str}`"
-    )
+        return "🚨 ОЧЕРЕДЬ НАЙДЕНА! 🚨"
+    return "🚨 QUEUE POPPED! 🚨"
 
 
 def format_test_message(lang: str = "en") -> str:
-    """Formats Markdown message for connection verification."""
-    now_str = datetime.datetime.now().strftime("%H:%M:%S")
-
+    """Formats ultra-concise message for connection verification."""
     if lang == "ru":
-        return (
-            "🔔 *Проверка подключения AikoArenaNotifier*\n\n"
-            "✅ Ваш Telegram бот настроен и успешно отправляет уведомления!\n"
-            f"🕒 *Время теста:* `{now_str}`"
-        )
-
-    return (
-        "🔔 *AikoArenaNotifier Connection Test*\n\n"
-        "✅ Your Telegram bot integration is working and ready to notify you!\n"
-        f"🕒 *Tested at:* `{now_str}`"
-    )
+        return "🔔 AikoArenaNotifier: Подключение проверено!"
+    return "🔔 AikoArenaNotifier: Connection verified!"
 
 
 class TelegramNotifier:

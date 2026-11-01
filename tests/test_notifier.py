@@ -10,9 +10,7 @@ from notifier import (
 
 def test_format_queue_pop_message():
     msg = format_queue_pop_message()
-    assert "ARENA QUEUE" in msg
-    assert "World of Warcraft" in msg
-    assert "Enter battle" in msg
+    assert msg == "🚨 QUEUE POPPED! 🚨"
 
 
 def test_telegram_send_empty_token_or_chat():

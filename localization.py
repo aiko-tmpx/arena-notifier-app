@@ -13,7 +13,7 @@ LOCALIZATION: Dict[str, Dict[str, str]] = {
         "app_version": "v1.0.0",
         "tab_dashboard": "Dashboard",
         "tab_settings": "Settings",
-        "tab_guide": "Guide / Help",
+        "tab_guide": "Guide & Help",
         
         # Persistent Status Footer
         "footer_status_label": "STATUS:",
@@ -60,6 +60,7 @@ LOCALIZATION: Dict[str, Dict[str, str]] = {
         
         # Settings
         "settings_title": "Application Settings",
+        "settings_lang_label": "Application Language:",
         "settings_tg_token_label": "Telegram Bot Token:",
         "settings_tg_token_placeholder": "e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ",
         "settings_tg_chat_id_label": "Telegram Chat ID:",
@@ -124,7 +125,7 @@ LOCALIZATION: Dict[str, Dict[str, str]] = {
         "app_version": "v1.0.0",
         "tab_dashboard": "Главная",
         "tab_settings": "Настройки",
-        "tab_guide": "Инструкция / Помощь",
+        "tab_guide": "Инструкция",
         
         # Persistent Status Footer
         "footer_status_label": "СТАТУС:",
@@ -171,6 +172,7 @@ LOCALIZATION: Dict[str, Dict[str, str]] = {
         
         # Settings
         "settings_title": "Настройки приложения",
+        "settings_lang_label": "Язык приложения:",
         "settings_tg_token_label": "Telegram Bot Token:",
         "settings_tg_token_placeholder": "например: 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ",
         "settings_tg_chat_id_label": "Telegram Chat ID:",

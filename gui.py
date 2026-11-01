@@ -1,5 +1,6 @@
 """Minimalist, refined Single Page Application GUI for AikoArenaNotifier.
-Features cohesive dark slate palette, violet primary accents, and zero visual clutter.
+Features cohesive dark slate palette, violet primary accents, Segoe UI typography,
+typographic sidebar, and global language switcher in Settings.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ logger = logging.getLogger("AikoArenaNotifier.GUI")
 # COHESIVE MINIMALIST COLOR PALETTE
 # =============================================================================
 COLOR_BG = "#0F1117"             # Deep slate dark surface
-COLOR_SIDEBAR = "#141721"        # Elevated sidebar tone
+COLOR_SIDEBAR = "#141721"        # Elevated sidebar surface
 COLOR_CARD = "#1D212C"           # Elevated card surface
 COLOR_CARD_BORDER = "#282F3E"    # Subtle card border
 COLOR_SURFACE_ALT = "#161922"    # Input & badge surface
@@ -32,7 +33,7 @@ COLOR_ACCENT = "#7C3AED"         # Violet / Purple primary accent
 COLOR_ACCENT_HOVER = "#6D28D9"   # Darker violet hover
 COLOR_ACCENT_BAR = "#8B5CF6"     # Left accent indicator bar
 COLOR_TEXT_PRIMARY = "#F3F4F6"   # Crisp clean off-white
-COLOR_TEXT_MUTED = "#9CA3AF"     # Neutral secondary text
+COLOR_TEXT_MUTED = "#94A3B8"     # Neutral secondary text
 COLOR_TEXT_DIM = "#6B7280"       # Dim timestamp & metadata text
 COLOR_STATUS_ACTIVE = "#10B981"  # Emerald green (Scanning)
 COLOR_STATUS_IDLE = "#6B7280"    # Slate grey (Idle)
@@ -61,16 +62,19 @@ class MainWindow(ctk.CTk):
         self._hotkey_hook = None
         self._current_hotkey = self.cfg.get("hotkey", "F9")
 
-        # Fixed Window geometry
+        # Window geometry: increased to 860x540 for generous breathing room
         self.title("AikoArenaNotifier")
-        self.geometry("780x520")
-        self.minsize(780, 520)
-        self.maxsize(780, 520)
+        self.geometry("860x540")
+        self.minsize(860, 540)
+        self.maxsize(860, 540)
         self.resizable(False, False)
         self.configure(fg_color=COLOR_BG)
 
         # Monitored display list
         self.monitors = get_monitors()
+
+        # Typography Scale (Native Windows Segoe UI)
+        self._init_typography()
 
         # Scanner initialization
         display_idx = self.cfg.get("selected_display_index", 0)
@@ -101,16 +105,26 @@ class MainWindow(ctk.CTk):
         lang = self.cfg.get("language", "en")
         self.log_event(t("log_app_ready", lang))
 
+    def _init_typography(self) -> None:
+        """Defines standardized typography scale using Segoe UI and Consolas."""
+        self.font_header = ctk.CTkFont(family="Segoe UI", size=20, weight="bold")
+        self.font_subheader = ctk.CTkFont(family="Segoe UI", size=14, weight="bold")
+        self.font_body = ctk.CTkFont(family="Segoe UI", size=13)
+        self.font_body_bold = ctk.CTkFont(family="Segoe UI", size=13, weight="bold")
+        self.font_meta = ctk.CTkFont(family="Segoe UI", size=11)
+        self.font_meta_bold = ctk.CTkFont(family="Segoe UI", size=11, weight="bold")
+        self.font_mono = ctk.CTkFont(family="Consolas", size=11)
+
     def _setup_layout(self) -> None:
         """Configures root 2-column grid layout."""
         self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=0, minsize=200)  # Left Sidebar
+        self.grid_columnconfigure(0, weight=0, minsize=210)  # Left Sidebar
         self.grid_columnconfigure(1, weight=1)               # Right Viewport
 
         # Left Sidebar Container
         self.sidebar_frame = ctk.CTkFrame(
             self,
-            width=200,
+            width=210,
             corner_radius=0,
             fg_color=COLOR_SIDEBAR,
             border_width=0,
@@ -124,22 +138,22 @@ class MainWindow(ctk.CTk):
             fg_color=COLOR_BG,
             border_width=0,
         )
-        self.viewport_frame.grid(row=0, column=1, sticky="nsew", padx=16, pady=16)
+        self.viewport_frame.grid(row=0, column=1, sticky="nsew", padx=18, pady=18)
         self.viewport_frame.grid_rowconfigure(0, weight=1)
         self.viewport_frame.grid_columnconfigure(0, weight=1)
 
     def _setup_sidebar(self) -> None:
-        """Constructs left navigation sidebar with header, tabs, and persistent status footer."""
+        """Constructs left navigation sidebar with clean typographic navigation buttons."""
         lang = self.cfg.get("language", "en")
 
         # 1. Brand Header
         brand_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
-        brand_frame.pack(fill="x", padx=16, pady=(20, 24))
+        brand_frame.pack(fill="x", padx=18, pady=(22, 26))
 
         title_label = ctk.CTkLabel(
             brand_frame,
             text="AikoArenaNotifier",
-            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
+            font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
             text_color=COLOR_TEXT_PRIMARY,
         )
         title_label.pack(anchor="w")
@@ -147,29 +161,29 @@ class MainWindow(ctk.CTk):
         version_label = ctk.CTkLabel(
             brand_frame,
             text=f"{t('app_version', lang)} • PvP Companion",
-            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            font=self.font_meta_bold,
             text_color=COLOR_ACCENT_BAR,
         )
-        version_label.pack(anchor="w", pady=(1, 0))
+        version_label.pack(anchor="w", pady=(2, 0))
 
-        # 2. Navigation items
+        # 2. Typographic Navigation items (No emojis / broken glyphs)
         nav_container = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
-        nav_container.pack(fill="x", padx=10, pady=0)
+        nav_container.pack(fill="x", padx=12, pady=0)
 
         self.nav_item_frames: Dict[str, ctk.CTkFrame] = {}
         self.nav_accent_bars: Dict[str, ctk.CTkFrame] = {}
         self.nav_buttons: Dict[str, ctk.CTkButton] = {}
 
         tabs = [
-            ("dashboard", "📊  " + t("tab_dashboard", lang)),
-            ("settings", "⚙️  " + t("tab_settings", lang)),
-            ("guide", "📖  " + t("tab_guide", lang)),
+            ("dashboard", t("tab_dashboard", lang)),
+            ("settings", t("tab_settings", lang)),
+            ("guide", t("tab_guide", lang)),
         ]
 
         for tab_id, tab_label in tabs:
             item_frame = ctk.CTkFrame(
                 nav_container,
-                height=36,
+                height=38,
                 corner_radius=6,
                 fg_color="transparent",
             )
@@ -182,17 +196,17 @@ class MainWindow(ctk.CTk):
                 corner_radius=2,
                 fg_color="transparent",
             )
-            accent_bar.pack(side="left", fill="y", padx=(2, 6), pady=4)
+            accent_bar.pack(side="left", fill="y", padx=(2, 8), pady=4)
 
             btn = ctk.CTkButton(
                 item_frame,
                 text=tab_label,
                 anchor="w",
-                font=ctk.CTkFont(family="Segoe UI", size=12, weight="normal"),
+                font=self.font_body,
                 fg_color="transparent",
                 text_color=COLOR_TEXT_MUTED,
                 hover_color=COLOR_CARD,
-                height=36,
+                height=38,
                 corner_radius=6,
                 command=lambda tid=tab_id: self.switch_view(tid),
             )
@@ -214,7 +228,7 @@ class MainWindow(ctk.CTk):
             border_width=1,
             border_color=COLOR_CARD_BORDER,
         )
-        footer_card.pack(fill="x", padx=12, pady=16)
+        footer_card.pack(fill="x", padx=12, pady=18)
 
         status_row = ctk.CTkFrame(footer_card, fg_color="transparent")
         status_row.pack(fill="x", padx=12, pady=(10, 4))
@@ -231,7 +245,7 @@ class MainWindow(ctk.CTk):
         self.lbl_status_text = ctk.CTkLabel(
             status_row,
             text=t("status_idle", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            font=self.font_meta_bold,
             text_color=COLOR_TEXT_MUTED,
         )
         self.lbl_status_text.pack(side="left", padx=4)
@@ -239,7 +253,7 @@ class MainWindow(ctk.CTk):
         self.lbl_footer_hotkey = ctk.CTkLabel(
             footer_card,
             text=f"{t('footer_hotkey_prefix', lang)} {self._current_hotkey}",
-            font=ctk.CTkFont(family="Segoe UI", size=11),
+            font=self.font_meta,
             text_color=COLOR_TEXT_DIM,
         )
         self.lbl_footer_hotkey.pack(anchor="w", padx=12, pady=(0, 10))
@@ -271,7 +285,7 @@ class MainWindow(ctk.CTk):
         self.hero_frame.grid(row=0, column=0, sticky="ew", pady=(0, 12))
 
         hero_inner = ctk.CTkFrame(self.hero_frame, fg_color="transparent")
-        hero_inner.pack(fill="x", padx=16, pady=14)
+        hero_inner.pack(fill="x", padx=18, pady=14)
 
         title_row = ctk.CTkFrame(hero_inner, fg_color="transparent")
         title_row.pack(fill="x")
@@ -288,7 +302,7 @@ class MainWindow(ctk.CTk):
         self.lbl_hero_title = ctk.CTkLabel(
             title_row,
             text=t("hero_idle_title", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
+            font=self.font_subheader,
             text_color=COLOR_TEXT_PRIMARY,
         )
         self.lbl_hero_title.pack(side="left", padx=6)
@@ -296,7 +310,7 @@ class MainWindow(ctk.CTk):
         self.lbl_hero_subtitle = ctk.CTkLabel(
             hero_inner,
             text=t("hero_idle_subtitle", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=11),
+            font=self.font_meta,
             text_color=COLOR_TEXT_MUTED,
         )
         self.lbl_hero_subtitle.pack(anchor="w", padx=(22, 0), pady=(3, 0))
@@ -306,7 +320,7 @@ class MainWindow(ctk.CTk):
         self.btn_toggle_scan = ctk.CTkButton(
             view,
             text=btn_text,
-            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            font=self.font_body_bold,
             fg_color=COLOR_ACCENT,
             hover_color=COLOR_ACCENT_HOVER,
             text_color="#FFFFFF",
@@ -316,7 +330,7 @@ class MainWindow(ctk.CTk):
         )
         self.btn_toggle_scan.grid(row=1, column=0, sticky="ew", pady=(0, 12))
 
-        # 3. Clean Metadata Line (replacing raw debug RGB & swatch)
+        # 3. Clean Metadata Line
         meta_card = ctk.CTkFrame(
             view,
             fg_color=COLOR_SURFACE_ALT,
@@ -332,12 +346,12 @@ class MainWindow(ctk.CTk):
         self.lbl_metadata = ctk.CTkLabel(
             meta_inner,
             text=self._get_metadata_summary_text(),
-            font=ctk.CTkFont(family="Segoe UI", size=11),
+            font=self.font_meta,
             text_color=COLOR_TEXT_MUTED,
         )
         self.lbl_metadata.pack(anchor="w")
 
-        # 4. Sleek "Recent Activity" Card (last 3-4 events)
+        # 4. Sleek Recent Activity Card
         activity_card = ctk.CTkFrame(
             view,
             fg_color=COLOR_CARD,
@@ -349,12 +363,12 @@ class MainWindow(ctk.CTk):
         view.grid_rowconfigure(3, weight=1)
 
         act_header = ctk.CTkFrame(activity_card, fg_color="transparent")
-        act_header.pack(fill="x", padx=14, pady=(10, 4))
+        act_header.pack(fill="x", padx=16, pady=(12, 6))
 
         lbl_act_title = ctk.CTkLabel(
             act_header,
             text=t("recent_activity_title", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+            font=self.font_body_bold,
             text_color=COLOR_TEXT_PRIMARY,
         )
         lbl_act_title.pack(side="left")
@@ -362,7 +376,7 @@ class MainWindow(ctk.CTk):
         btn_clear = ctk.CTkButton(
             act_header,
             text=t("btn_clear_log", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=11),
+            font=self.font_meta,
             fg_color="transparent",
             text_color=COLOR_TEXT_DIM,
             hover_color=COLOR_CARD_BORDER,
@@ -373,30 +387,29 @@ class MainWindow(ctk.CTk):
         )
         btn_clear.pack(side="right")
 
-        # Compact activity display box
+        # Compact activity display box with generous inner margins
         self.log_textbox = ctk.CTkTextbox(
             activity_card,
             fg_color=COLOR_SURFACE_ALT,
             text_color=COLOR_TEXT_PRIMARY,
-            font=ctk.CTkFont(family="Consolas", size=11),
+            font=self.font_mono,
             corner_radius=6,
             activate_scrollbars=False,
             border_width=0,
         )
-        self.log_textbox.pack(fill="both", expand=True, padx=12, pady=(0, 10))
+        self.log_textbox.pack(fill="both", expand=True, padx=14, pady=(0, 14))
         self.log_textbox.configure(state="disabled")
 
         return view
 
     # =========================================================================
-    # VIEW 2: SETTINGS (SCROLLBAR-FREE)
+    # VIEW 2: SETTINGS (FEATURING GLOBAL LANGUAGE SWITCHER)
     # =========================================================================
     def _create_settings_view(self) -> ctk.CTkFrame:
         view = ctk.CTkFrame(self.viewport_frame, fg_color="transparent")
         view.grid_columnconfigure(0, weight=1)
         lang = self.cfg.get("language", "en")
 
-        # Settings Card Container
         card = ctk.CTkFrame(
             view,
             fg_color=COLOR_CARD,
@@ -407,25 +420,49 @@ class MainWindow(ctk.CTk):
         card.pack(fill="both", expand=True, padx=0, pady=0)
 
         inner = ctk.CTkFrame(card, fg_color="transparent")
-        inner.pack(fill="both", expand=True, padx=16, pady=12)
+        inner.pack(fill="both", expand=True, padx=20, pady=16)
 
-        # 1. Telegram Bot Token
-        lbl_token = ctk.CTkLabel(
+        # 1. Global Application Language Switcher
+        self.lbl_lang_setting = ctk.CTkLabel(
             inner,
-            text=t("settings_tg_token_label", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            text=t("settings_lang_label", lang),
+            font=self.font_meta_bold,
             text_color=COLOR_TEXT_PRIMARY,
         )
-        lbl_token.pack(anchor="w")
+        self.lbl_lang_setting.pack(anchor="w")
+
+        current_lang_str = "Русский" if lang == "ru" else "English"
+        self.seg_lang = ctk.CTkSegmentedButton(
+            inner,
+            values=["English", "Русский"],
+            font=self.font_body,
+            height=32,
+            corner_radius=6,
+            fg_color=COLOR_SURFACE_ALT,
+            selected_color=COLOR_ACCENT,
+            selected_hover_color=COLOR_ACCENT_HOVER,
+            command=self._on_language_change,
+        )
+        self.seg_lang.set(current_lang_str)
+        self.seg_lang.pack(anchor="w", pady=(3, 10))
+
+        # 2. Telegram Bot Token
+        self.lbl_token = ctk.CTkLabel(
+            inner,
+            text=t("settings_tg_token_label", lang),
+            font=self.font_meta_bold,
+            text_color=COLOR_TEXT_PRIMARY,
+        )
+        self.lbl_token.pack(anchor="w")
 
         token_row = ctk.CTkFrame(inner, fg_color="transparent")
-        token_row.pack(fill="x", pady=(2, 8))
+        token_row.pack(fill="x", pady=(3, 8))
 
         self.entry_token = ctk.CTkEntry(
             token_row,
             show="*",
             placeholder_text=t("settings_tg_token_placeholder", lang),
-            font=ctk.CTkFont(family="Consolas", size=11),
+            font=self.font_mono,
             height=32,
             corner_radius=6,
             fg_color=COLOR_SURFACE_ALT,
@@ -439,7 +476,7 @@ class MainWindow(ctk.CTk):
         self._token_visible = False
         self.btn_toggle_token = ctk.CTkButton(
             token_row,
-            text="👁️",
+            text="👁",
             width=34,
             height=32,
             corner_radius=6,
@@ -449,37 +486,37 @@ class MainWindow(ctk.CTk):
         )
         self.btn_toggle_token.pack(side="left", padx=(6, 0))
 
-        # 2. Telegram Chat ID
-        lbl_chat_id = ctk.CTkLabel(
+        # 3. Telegram Chat ID
+        self.lbl_chat_id = ctk.CTkLabel(
             inner,
             text=t("settings_tg_chat_id_label", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            font=self.font_meta_bold,
             text_color=COLOR_TEXT_PRIMARY,
         )
-        lbl_chat_id.pack(anchor="w")
+        self.lbl_chat_id.pack(anchor="w")
 
         self.entry_chat_id = ctk.CTkEntry(
             inner,
             placeholder_text=t("settings_tg_chat_id_placeholder", lang),
-            font=ctk.CTkFont(family="Consolas", size=11),
+            font=self.font_mono,
             height=32,
             corner_radius=6,
             fg_color=COLOR_SURFACE_ALT,
             border_color=COLOR_INPUT_BORDER,
             border_width=1,
         )
-        self.entry_chat_id.pack(fill="x", pady=(2, 8))
+        self.entry_chat_id.pack(fill="x", pady=(3, 8))
         if self.cfg.get("telegram_chat_id"):
             self.entry_chat_id.insert(0, str(self.cfg["telegram_chat_id"]))
 
-        # 3. Target Game Display Selector
-        lbl_display = ctk.CTkLabel(
+        # 4. Target Game Display Selector
+        self.lbl_display = ctk.CTkLabel(
             inner,
             text=t("settings_display_label", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            font=self.font_meta_bold,
             text_color=COLOR_TEXT_PRIMARY,
         )
-        lbl_display.pack(anchor="w")
+        self.lbl_display.pack(anchor="w")
 
         monitor_labels = [m["label"] for m in self.monitors]
         selected_mon_idx = self.cfg.get("selected_display_index", 0)
@@ -492,7 +529,7 @@ class MainWindow(ctk.CTk):
         self.opt_display = ctk.CTkOptionMenu(
             inner,
             values=monitor_labels,
-            font=ctk.CTkFont(family="Segoe UI", size=11),
+            font=self.font_body,
             height=32,
             corner_radius=6,
             fg_color=COLOR_SURFACE_ALT,
@@ -500,16 +537,16 @@ class MainWindow(ctk.CTk):
             button_hover_color=COLOR_ACCENT,
         )
         self.opt_display.set(default_mon_label)
-        self.opt_display.pack(fill="x", pady=(2, 8))
+        self.opt_display.pack(fill="x", pady=(3, 8))
 
-        # 4. Hotkey Selector
-        lbl_hotkey = ctk.CTkLabel(
+        # 5. Hotkey Selector
+        self.lbl_hotkey = ctk.CTkLabel(
             inner,
             text=t("settings_hotkey_label", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            font=self.font_meta_bold,
             text_color=COLOR_TEXT_PRIMARY,
         )
-        lbl_hotkey.pack(anchor="w")
+        self.lbl_hotkey.pack(anchor="w")
 
         hotkey_options = ["F8", "F9", "F10", "F11", "F12"]
         current_hk = self.cfg.get("hotkey", "F9")
@@ -519,7 +556,7 @@ class MainWindow(ctk.CTk):
         self.opt_hotkey = ctk.CTkOptionMenu(
             inner,
             values=hotkey_options,
-            font=ctk.CTkFont(family="Segoe UI", size=11),
+            font=self.font_body,
             height=32,
             corner_radius=6,
             fg_color=COLOR_SURFACE_ALT,
@@ -527,13 +564,13 @@ class MainWindow(ctk.CTk):
             button_hover_color=COLOR_ACCENT,
         )
         self.opt_hotkey.set(current_hk)
-        self.opt_hotkey.pack(fill="x", pady=(2, 10))
+        self.opt_hotkey.pack(fill="x", pady=(3, 10))
 
-        # 5. Audio Alert Checkbox
+        # 6. Audio Alert Checkbox
         self.chk_sound = ctk.CTkCheckBox(
             inner,
             text=t("settings_sound_label", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=11),
+            font=self.font_body,
             text_color=COLOR_TEXT_PRIMARY,
             fg_color=COLOR_ACCENT,
             hover_color=COLOR_ACCENT_HOVER,
@@ -545,17 +582,17 @@ class MainWindow(ctk.CTk):
             self.chk_sound.deselect()
         self.chk_sound.pack(anchor="w", pady=(0, 14))
 
-        # 6. Harmonious Bottom Action Row
+        # 7. Action Row
         btn_row = ctk.CTkFrame(inner, fg_color="transparent")
         btn_row.pack(fill="x", pady=(0, 6))
 
         self.btn_test_tg = ctk.CTkButton(
             btn_row,
-            text="🔔 " + t("settings_test_tg_btn", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            text=t("settings_test_tg_btn", lang),
+            font=self.font_body_bold,
             fg_color=COLOR_NAV_ACTIVE,
             hover_color="#2F374A",
-            height=34,
+            height=36,
             corner_radius=6,
             command=self._on_test_telegram,
         )
@@ -563,11 +600,11 @@ class MainWindow(ctk.CTk):
 
         self.btn_save_settings = ctk.CTkButton(
             btn_row,
-            text="💾 " + t("settings_save_btn", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            text=t("settings_save_btn", lang),
+            font=self.font_body_bold,
             fg_color=COLOR_ACCENT,
             hover_color=COLOR_ACCENT_HOVER,
-            height=34,
+            height=36,
             corner_radius=6,
             command=self._on_save_settings,
         )
@@ -581,7 +618,7 @@ class MainWindow(ctk.CTk):
         self.lbl_settings_status = ctk.CTkLabel(
             feedback_container,
             text="",
-            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            font=self.font_meta_bold,
             text_color=COLOR_TEXT_DIM,
             anchor="w",
         )
@@ -590,7 +627,7 @@ class MainWindow(ctk.CTk):
         return view
 
     # =========================================================================
-    # VIEW 3: GUIDE / HELP
+    # VIEW 3: GUIDE & HELP (CLEAN STRUCTURED CARDS)
     # =========================================================================
     def _create_guide_view(self) -> ctk.CTkFrame:
         view = ctk.CTkFrame(self.viewport_frame, fg_color="transparent")
@@ -598,30 +635,17 @@ class MainWindow(ctk.CTk):
         view.grid_rowconfigure(1, weight=1)
         lang = self.cfg.get("language", "en")
 
-        # Top Bar: Title & Integrated Language Selector
+        # Top Bar: Clean Title
         top_bar = ctk.CTkFrame(view, fg_color="transparent")
         top_bar.grid(row=0, column=0, sticky="ew", pady=(0, 10))
 
-        lbl_guide_title = ctk.CTkLabel(
+        self.lbl_guide_title = ctk.CTkLabel(
             top_bar,
-            text=t("guide_title", lang),
-            font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
+            text=t("tab_guide", lang),
+            font=self.font_subheader,
             text_color=COLOR_TEXT_PRIMARY,
         )
-        lbl_guide_title.pack(side="left")
-
-        current_lang_str = "Русский" if lang == "ru" else "English"
-        self.seg_lang = ctk.CTkSegmentedButton(
-            top_bar,
-            values=["English", "Русский"],
-            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
-            fg_color=COLOR_SURFACE_ALT,
-            selected_color=COLOR_ACCENT,
-            selected_hover_color=COLOR_ACCENT_HOVER,
-            command=self._on_language_change,
-        )
-        self.seg_lang.set(current_lang_str)
-        self.seg_lang.pack(side="right")
+        self.lbl_guide_title.pack(side="left")
 
         # Scrollable Step Cards
         scroll_steps = ctk.CTkScrollableFrame(
@@ -652,12 +676,12 @@ class MainWindow(ctk.CTk):
             step_card.pack(fill="x", pady=5)
 
             card_inner = ctk.CTkFrame(step_card, fg_color="transparent")
-            card_inner.pack(fill="x", padx=14, pady=10)
+            card_inner.pack(fill="x", padx=16, pady=12)
 
             title_lbl = ctk.CTkLabel(
                 card_inner,
                 text=t(title_key, lang),
-                font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+                font=self.font_body_bold,
                 text_color=COLOR_ACCENT_BAR,
             )
             title_lbl.pack(anchor="w")
@@ -665,12 +689,12 @@ class MainWindow(ctk.CTk):
             body_lbl = ctk.CTkLabel(
                 card_inner,
                 text=t(body_key, lang),
-                font=ctk.CTkFont(family="Segoe UI", size=11),
+                font=self.font_body,
                 text_color=COLOR_TEXT_PRIMARY,
                 justify="left",
-                wraplength=490,
+                wraplength=560,
             )
-            body_lbl.pack(anchor="w", pady=(3, 0))
+            body_lbl.pack(anchor="w", pady=(4, 0))
 
             self.guide_step_labels.append((title_lbl, body_lbl))
 
@@ -689,7 +713,7 @@ class MainWindow(ctk.CTk):
                 self.nav_accent_bars[name].configure(fg_color=COLOR_ACCENT_BAR)
                 self.nav_buttons[name].configure(
                     text_color=COLOR_TEXT_PRIMARY,
-                    font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+                    font=self.font_body_bold,
                 )
             else:
                 frame.grid_forget()
@@ -698,7 +722,7 @@ class MainWindow(ctk.CTk):
                 self.nav_accent_bars[name].configure(fg_color="transparent")
                 self.nav_buttons[name].configure(
                     text_color=COLOR_TEXT_MUTED,
-                    font=ctk.CTkFont(family="Segoe UI", size=12, weight="normal"),
+                    font=self.font_body,
                 )
 
     # =========================================================================
@@ -818,7 +842,7 @@ class MainWindow(ctk.CTk):
         """Toggles Telegram bot token entry between masked and plaintext."""
         self._token_visible = not self._token_visible
         self.entry_token.configure(show="" if self._token_visible else "*")
-        self.btn_toggle_token.configure(text="🔒" if self._token_visible else "👁️")
+        self.btn_toggle_token.configure(text="🔒" if self._token_visible else "👁")
 
     def _on_test_telegram(self) -> None:
         """Executes Telegram connection test in background thread."""
@@ -916,14 +940,15 @@ class MainWindow(ctk.CTk):
             )
 
     # =========================================================================
-    # GUIDE / LANGUAGE SELECTOR
+    # GLOBAL LANGUAGE CONTROLLER
     # =========================================================================
     def _on_language_change(self, selected_lang_name: str) -> None:
-        """Switches guide and app language between English and Russian."""
+        """Switches global language between English and Russian."""
         new_lang = "ru" if selected_lang_name == "Русский" else "en"
         self.cfg["language"] = new_lang
         self.config_manager.save_config({"language": new_lang})
 
+        # Update Guide Cards text
         steps = [
             ("guide_step1_title", "guide_step1_body"),
             ("guide_step2_title", "guide_step2_body"),
@@ -938,14 +963,31 @@ class MainWindow(ctk.CTk):
         self._refresh_translations(new_lang)
 
     def _refresh_translations(self, lang: str) -> None:
-        """Refreshes dynamic localized strings across tabs and footers."""
-        self.nav_buttons["dashboard"].configure(text="📊  " + t("tab_dashboard", lang))
-        self.nav_buttons["settings"].configure(text="⚙️  " + t("tab_settings", lang))
-        self.nav_buttons["guide"].configure(text="📖  " + t("tab_guide", lang))
+        """Refreshes dynamic localized strings across tabs, settings labels, and footers."""
+        # Navigation tabs
+        self.nav_buttons["dashboard"].configure(text=t("tab_dashboard", lang))
+        self.nav_buttons["settings"].configure(text=t("tab_settings", lang))
+        self.nav_buttons["guide"].configure(text=t("tab_guide", lang))
 
+        # Footer
         self.lbl_footer_hotkey.configure(
             text=f"{t('footer_hotkey_prefix', lang)} {self._current_hotkey}"
         )
+
+        # Settings labels
+        self.lbl_lang_setting.configure(text=t("settings_lang_label", lang))
+        self.lbl_token.configure(text=t("settings_tg_token_label", lang))
+        self.lbl_chat_id.configure(text=t("settings_tg_chat_id_label", lang))
+        self.lbl_display.configure(text=t("settings_display_label", lang))
+        self.lbl_hotkey.configure(text=t("settings_hotkey_label", lang))
+        self.chk_sound.configure(text=t("settings_sound_label", lang))
+        self.btn_test_tg.configure(text=t("settings_test_tg_btn", lang))
+        self.btn_save_settings.configure(text=t("settings_save_btn", lang))
+
+        # Guide header
+        self.lbl_guide_title.configure(text=t("tab_guide", lang))
+
+        # Dashboard metadata line & state
         self.lbl_metadata.configure(text=self._get_metadata_summary_text())
         self._update_ui_state(is_scanning=self.scanner.is_scanning)
 
@@ -1009,7 +1051,6 @@ class MainWindow(ctk.CTk):
         if len(self._recent_events) > 5:
             self._recent_events = self._recent_events[-5:]
 
-        # Refresh textbox with clean rows
         self.log_textbox.configure(state="normal")
         self.log_textbox.delete("1.0", "end")
         self.log_textbox.insert("end", "\n".join(self._recent_events) + "\n")
