@@ -7,7 +7,7 @@ from notifier import SoundNotifier, TelegramNotifier
 
 @pytest.fixture(scope="module")
 def test_app(tmp_path_factory):
-    tmp_path = tmp_path_factory.mktemp("gui_compact_test")
+    tmp_path = tmp_path_factory.mktemp("gui_autosave_test")
     config_file = tmp_path / "config.json"
     cfg_mgr = ConfigManager(config_path=config_file)
     tg = TelegramNotifier()
@@ -32,6 +32,7 @@ def test_main_window_initialization(test_app):
     assert test_app.opt_display is not None
     assert test_app.opt_hotkey is not None
     assert test_app.chk_sound is not None
+    assert test_app.btn_test is not None
 
 
 def test_toggle_scanning_cycle(test_app):
@@ -44,17 +45,21 @@ def test_toggle_scanning_cycle(test_app):
 
 def test_language_change(test_app):
     test_app.on_language_change("English")
+    assert test_app._current_lang_name == "English"
     assert test_app.cfg["language"] == "en"
+    
     test_app.on_language_change("Русский")
+    assert test_app._current_lang_name == "Русский"
     assert test_app.cfg["language"] == "ru"
 
 
-def test_save_settings(test_app):
+def test_auto_save_mechanism(test_app):
     test_app.entry_token.delete(0, "end")
-    test_app.entry_token.insert(0, "test_token_123")
+    test_app.entry_token.insert(0, "autosave_token_abc")
     test_app.entry_chat_id.delete(0, "end")
-    test_app.entry_chat_id.insert(0, "123456789")
-    test_app.on_save_settings()
+    test_app.entry_chat_id.insert(0, "99887766")
     
-    assert test_app.cfg["telegram_bot_token"] == "test_token_123"
-    assert test_app.cfg["telegram_chat_id"] == "123456789"
+    test_app.auto_save()
+    
+    assert test_app.cfg["telegram_bot_token"] == "autosave_token_abc"
+    assert test_app.cfg["telegram_chat_id"] == "99887766"

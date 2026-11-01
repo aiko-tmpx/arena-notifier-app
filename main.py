@@ -11,7 +11,13 @@ import os
 import sys
 import urllib.request
 
-# 1. Enable Windows DPI Awareness before creating any GUI windows
+# 1. Enable Windows DPI Awareness and set AppUserModelID for crisp taskbar/titlebar icon
+try:
+    myappid = "aiko.arenanotifier.companion.v1"
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+except Exception:
+    pass
+
 try:
     ctypes.windll.shcore.SetProcessDpiAwareness(1)
 except Exception:
