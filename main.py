@@ -62,8 +62,18 @@ def ensure_and_load_fonts() -> None:
 def ensure_and_load_icons() -> None:
     """Ensures UI vector and raster icons (chevron-down, lock, unlock) exist in assets/icons/."""
     base_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
-    icons_dir = os.path.join(base_dir, "assets", "icons")
+    assets_dir = os.path.join(base_dir, "assets")
+    icons_dir = os.path.join(assets_dir, "icons")
     os.makedirs(icons_dir, exist_ok=True)
+
+    # Ensure main application icon exists
+    ico_path = os.path.join(assets_dir, "icon.ico")
+    if not os.path.exists(ico_path):
+        try:
+            from generate_icons import generate_icon_assets
+            generate_icon_assets(output_dir=assets_dir)
+        except Exception:
+            pass
 
     required_pngs = ["chevron-down.png", "lock.png", "unlock.png"]
     if all(os.path.exists(os.path.join(icons_dir, f)) for f in required_pngs):

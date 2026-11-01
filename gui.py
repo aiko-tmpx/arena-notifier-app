@@ -5,11 +5,18 @@ high-resolution Windows taskbar/titlebar icon, and dynamic clean localization.
 
 from __future__ import annotations
 
+import ctypes
 import logging
 import os
 import sys
 import threading
 from typing import Dict, List, Optional, Tuple
+
+# Set Windows Application User Model ID for crisp taskbar/titlebar icon grouping
+try:
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("aiko.arenanotifier.companion.v1")
+except Exception:
+    pass
 
 import customtkinter as ctk
 from PIL import Image, ImageTk
@@ -158,17 +165,18 @@ def ensure_and_load_icons() -> None:
 
 
 def set_app_icon(window: ctk.CTk, icon_filename: str = "assets/icon.ico") -> None:
-    """Sets high-resolution icon for Windows taskbar and titlebar."""
+    """Sets multi-resolution icon for Windows taskbar and titlebar."""
     base_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
     icon_path = os.path.join(base_dir, icon_filename)
-    png_path = os.path.join(base_dir, "assets", "icon.png")
 
     if os.path.exists(icon_path):
         try:
             window.iconbitmap(icon_path)
-        except Exception:
-            pass
+            return
+        except Exception as e:
+            logger.debug(f"Failed setting iconbitmap: {e}")
 
+    png_path = os.path.join(base_dir, "assets", "icon.png")
     if os.path.exists(png_path):
         try:
             img = ImageTk.PhotoImage(Image.open(png_path).resize((64, 64), Image.Resampling.LANCZOS))
