@@ -81,22 +81,34 @@ def test_lock_toggle_behavior(test_app):
     test_app.toggle_token_lock()
     assert test_app._token_locked is True
     assert test_app.entry_token.cget("state") == "readonly"
+    assert test_app.entry_token.cget("text_color") == "#64748B"
+    assert test_app.entry_token.cget("fg_color") == "#0D0F15"
+    assert test_app.entry_token.cget("border_color") == "#1E2330"
     assert test_app.btn_lock_token.cget("fg_color") == "#1E2433"
 
     test_app.toggle_token_lock()
     assert test_app._token_locked is False
     assert test_app.entry_token.cget("state") == "normal"
+    assert test_app.entry_token.cget("text_color") == "#F3F4F6"
+    assert test_app.entry_token.cget("fg_color") == "#161922"
+    assert test_app.entry_token.cget("border_color") == "#2B3345"
     assert test_app.btn_lock_token.cget("fg_color") == "#374151"
 
     # Toggle chat ID lock
     test_app.toggle_chat_id_lock()
     assert test_app._chat_id_locked is True
     assert test_app.entry_chat_id.cget("state") == "readonly"
+    assert test_app.entry_chat_id.cget("text_color") == "#64748B"
+    assert test_app.entry_chat_id.cget("fg_color") == "#0D0F15"
+    assert test_app.entry_chat_id.cget("border_color") == "#1E2330"
     assert test_app.btn_lock_chat_id.cget("fg_color") == "#1E2433"
 
     test_app.toggle_chat_id_lock()
     assert test_app._chat_id_locked is False
     assert test_app.entry_chat_id.cget("state") == "normal"
+    assert test_app.entry_chat_id.cget("text_color") == "#F3F4F6"
+    assert test_app.entry_chat_id.cget("fg_color") == "#161922"
+    assert test_app.entry_chat_id.cget("border_color") == "#2B3345"
     assert test_app.btn_lock_chat_id.cget("fg_color") == "#374151"
 
 
@@ -106,6 +118,10 @@ def test_clean_option_menus_chevron(test_app):
     assert isinstance(test_app.opt_lang, CleanOptionMenu)
     assert isinstance(test_app.opt_display, CleanOptionMenu)
     assert isinstance(test_app.opt_hotkey, CleanOptionMenu)
+
+    assert test_app.opt_lang.cget("button_hover_color") == "#2B3346"
+    assert test_app.opt_lang._dropdown_menu.cget("borderwidth") == 0
+    assert str(test_app.opt_lang._dropdown_menu.cget("relief")) == "flat"
 
     test_app.opt_lang._draw()
     assert len(test_app.opt_lang._canvas.find_withtag("clean_chevron")) > 0

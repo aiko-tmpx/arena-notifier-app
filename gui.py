@@ -33,6 +33,9 @@ logger = logging.getLogger("AikoArenaNotifier.GUI")
 COLOR_BG = "#0F1117"
 COLOR_SURFACE_ALT = "#161922"
 COLOR_INPUT_BORDER = "#2B3345"
+COLOR_INPUT_LOCKED_BG = "#0D0F15"
+COLOR_INPUT_LOCKED_BORDER = "#1E2330"
+COLOR_INPUT_LOCKED_TEXT = "#64748B"
 COLOR_DIVIDER = "#2D3343"
 COLOR_ACCENT = "#7C3AED"
 COLOR_ACCENT_HOVER = "#6D28D9"
@@ -187,12 +190,29 @@ def set_app_icon(window: ctk.CTk, icon_filename: str = "assets/icon.ico") -> Non
 
 
 class CleanOptionMenu(ctk.CTkOptionMenu):
-    """OptionMenu replacing the default blurry bitmap arrow with a clean high-resolution chevron."""
+    """OptionMenu replacing default blurry bitmap arrow with a clean high-resolution chevron,
+    cohesive dark-theme button styling, and borderless dark dropdown popup.
+    """
 
     def __init__(self, *args, chevron_image: Optional[ctk.CTkImage] = None, **kwargs):
         self._custom_chevron_image = chevron_image
         self._custom_chevron_photo = None
+
+        # Cohesive dark-theme defaults: subtle dark slate button, no harsh neon purple block
+        kwargs.setdefault("fg_color", COLOR_SURFACE_ALT)
+        kwargs.setdefault("button_color", "#1F2432")
+        kwargs.setdefault("button_hover_color", "#2B3346")
+        kwargs.setdefault("dropdown_fg_color", COLOR_SURFACE_ALT)
+        kwargs.setdefault("dropdown_hover_color", COLOR_ACCENT)
+        kwargs.setdefault("dropdown_text_color", COLOR_TEXT_PRIMARY)
+
         super().__init__(*args, **kwargs)
+
+        # Eliminate thick Windows 3D/white border on the dropdown menu
+        try:
+            self._dropdown_menu.configure(borderwidth=0, activeborderwidth=0, relief="flat")
+        except Exception:
+            pass
 
     def _draw(self, no_color_updates: bool = False) -> None:
         super()._draw(no_color_updates)
@@ -334,40 +354,70 @@ class MainWindow(ctk.CTk):
     def toggle_token_lock(self) -> None:
         """Toggles read-only lock state for Telegram Bot Token entry."""
         self._token_locked = not self._token_locked
+        self._update_token_lock_ui()
+        if not self._token_locked:
+            self.entry_token.focus()
+
+    def _update_token_lock_ui(self) -> None:
+        """Updates visual styling and state for Bot Token input based on lock state."""
         if self._token_locked:
-            self.entry_token.configure(state="readonly")
+            self.entry_token.configure(
+                state="readonly",
+                text_color=COLOR_INPUT_LOCKED_TEXT,
+                fg_color=COLOR_INPUT_LOCKED_BG,
+                border_color=COLOR_INPUT_LOCKED_BORDER,
+            )
             self.btn_lock_token.configure(
                 image=self.icon_lock,
                 fg_color="#1E2433",
                 hover_color="#2B3345",
             )
         else:
-            self.entry_token.configure(state="normal")
+            self.entry_token.configure(
+                state="normal",
+                text_color=COLOR_TEXT_PRIMARY,
+                fg_color=COLOR_SURFACE_ALT,
+                border_color=COLOR_INPUT_BORDER,
+            )
             self.btn_lock_token.configure(
                 image=self.icon_unlock,
                 fg_color="#374151",
                 hover_color="#4B5563",
             )
-            self.entry_token.focus()
 
     def toggle_chat_id_lock(self) -> None:
         """Toggles read-only lock state for Telegram Chat ID entry."""
         self._chat_id_locked = not self._chat_id_locked
+        self._update_chat_id_lock_ui()
+        if not self._chat_id_locked:
+            self.entry_chat_id.focus()
+
+    def _update_chat_id_lock_ui(self) -> None:
+        """Updates visual styling and state for Chat ID input based on lock state."""
         if self._chat_id_locked:
-            self.entry_chat_id.configure(state="readonly")
+            self.entry_chat_id.configure(
+                state="readonly",
+                text_color=COLOR_INPUT_LOCKED_TEXT,
+                fg_color=COLOR_INPUT_LOCKED_BG,
+                border_color=COLOR_INPUT_LOCKED_BORDER,
+            )
             self.btn_lock_chat_id.configure(
                 image=self.icon_lock,
                 fg_color="#1E2433",
                 hover_color="#2B3345",
             )
         else:
-            self.entry_chat_id.configure(state="normal")
+            self.entry_chat_id.configure(
+                state="normal",
+                text_color=COLOR_TEXT_PRIMARY,
+                fg_color=COLOR_SURFACE_ALT,
+                border_color=COLOR_INPUT_BORDER,
+            )
             self.btn_lock_chat_id.configure(
                 image=self.icon_unlock,
                 fg_color="#374151",
                 hover_color="#4B5563",
             )
-            self.entry_chat_id.focus()
 
     def _setup_layout(self) -> None:
         """Constructs compact single-window layout using strictly .grid()."""
@@ -426,9 +476,6 @@ class MainWindow(ctk.CTk):
             font=self.font_input,
             height=36,
             corner_radius=8,
-            fg_color=COLOR_SURFACE_ALT,
-            button_color="#232734",
-            button_hover_color=COLOR_ACCENT,
             chevron_image=self.icon_chevron,
             command=self.on_language_change,
         )
@@ -468,9 +515,6 @@ class MainWindow(ctk.CTk):
         self.entry_token.bind("<FocusOut>", self._on_entry_focus_out)
 
         self._token_locked = bool(self.cfg.get("telegram_bot_token"))
-        if self._token_locked:
-            self.entry_token.configure(state="readonly")
-
         self.btn_lock_token = ctk.CTkButton(
             self.token_frame,
             text="",
@@ -483,6 +527,7 @@ class MainWindow(ctk.CTk):
             command=self.toggle_token_lock,
         )
         self.btn_lock_token.grid(row=0, column=1, sticky="e")
+        self._update_token_lock_ui()
 
         # ROW 7: Form - Telegram Chat ID Label
         self.lbl_chat_id = ctk.CTkLabel(
@@ -516,9 +561,6 @@ class MainWindow(ctk.CTk):
         self.entry_chat_id.bind("<FocusOut>", self._on_entry_focus_out)
 
         self._chat_id_locked = bool(self.cfg.get("telegram_chat_id"))
-        if self._chat_id_locked:
-            self.entry_chat_id.configure(state="readonly")
-
         self.btn_lock_chat_id = ctk.CTkButton(
             self.chat_id_frame,
             text="",
@@ -531,6 +573,7 @@ class MainWindow(ctk.CTk):
             command=self.toggle_chat_id_lock,
         )
         self.btn_lock_chat_id.grid(row=0, column=1, sticky="e")
+        self._update_chat_id_lock_ui()
 
         # ROW 9: Form - Target Game Display Label
         self.lbl_display = ctk.CTkLabel(
@@ -557,9 +600,6 @@ class MainWindow(ctk.CTk):
             font=self.font_input,
             height=36,
             corner_radius=8,
-            fg_color=COLOR_SURFACE_ALT,
-            button_color="#232734",
-            button_hover_color=COLOR_ACCENT,
             chevron_image=self.icon_chevron,
             command=lambda _: self.auto_save(),
         )
@@ -588,9 +628,6 @@ class MainWindow(ctk.CTk):
             font=self.font_input,
             height=36,
             corner_radius=8,
-            fg_color=COLOR_SURFACE_ALT,
-            button_color="#232734",
-            button_hover_color=COLOR_ACCENT,
             chevron_image=self.icon_chevron,
             command=lambda _: self.auto_save(),
         )
